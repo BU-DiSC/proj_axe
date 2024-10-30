@@ -10,6 +10,7 @@ from jobs.data_gen import DataGenJob
 from jobs.ltune_train import LTuneTrainJob
 from jobs.mlos_bo import BayesianPipelineMlos
 from jobs.mlos_exp_runs import ExperimentMLOS
+from jobs.ltune_robust_train import LTuneRobustTrainJob
 
 
 class AxeDriver:
@@ -33,6 +34,7 @@ class AxeDriver:
             "LTuneTrain": LTuneTrainJob,
             "BayesianPipelineMLOS": BayesianPipelineMlos,
             "ExperimentMLOS": ExperimentMLOS,
+            "LTuneRobustTrain": LTuneRobustTrainJob,
         }
         jobs_list = self.config["app"]["run"]
         for job_name in jobs_list:

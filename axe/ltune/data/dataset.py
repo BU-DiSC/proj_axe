@@ -5,7 +5,7 @@ import pyarrow.parquet as pa
 import torch
 import torch.utils.data
 
-from axe.ltune.data.input_features import kINPUT_FEATS
+from axe.ltune.data.input_features import kINPUT_FEATS, kINPUT_FEATS_ROBUST
 
 
 class LTuneDataSet(torch.utils.data.IterableDataset):
@@ -13,12 +13,16 @@ class LTuneDataSet(torch.utils.data.IterableDataset):
         self,
         folder: str,
         shuffle: bool = False,
+        robust: bool = False,
     ) -> None:
         self._format = format
         self._fnames = glob.glob(os.path.join(folder, "*.parquet"))
         self._shuffle = shuffle
+        self._robust = robust
 
     def _get_input_cols(self):
+        if self._robust:
+            return kINPUT_FEATS_ROBUST
         return kINPUT_FEATS
 
     def _load_data(self, fname):

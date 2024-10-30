@@ -23,6 +23,7 @@ run = [
     # "DataGen",
     # "LCMTrain",
     # "LTuneTrain",
+    "LTuneRobustTrain",
     # "BayesianPipelineBoTorch",
     # "BayesianPipelineMLOS"
     "ExperimentMLOS",

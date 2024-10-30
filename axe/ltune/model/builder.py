@@ -4,7 +4,8 @@ from torch import nn
 from axe.lsm.types import Policy
 
 from axe.ltune.model import ClassicTuner, QLSMTuner, KapLSMTuner, YZLSMTuner
-from axe.ltune.data.input_features import kINPUT_FEATS
+from axe.ltune.model.kap_robust_tuner import KapLSMRobustTuner
+from axe.ltune.data.input_features import kINPUT_FEATS, kINPUT_FEATS_ROBUST
 
 
 class LTuneModelBuilder:
@@ -39,6 +40,22 @@ class LTuneModelBuilder:
 
     def get_choices(self):
         return self._models.keys()
+
+    def build_robust_model(self) -> torch.nn.Module:
+        feat_list = kINPUT_FEATS_ROBUST
+        kwargs = {
+            "num_feats": len(feat_list),
+            "capacity_range": self.capacity_range,
+            "hidden_length": self.hidden_length,
+            "hidden_width": self.hidden_width,
+            "dropout_percentage": self.dropout,
+            "norm_layer": self.norm_layer,
+            "num_kap": self.max_levels,
+            "categorical_mode": self.categorical_mode
+        }
+        model = KapLSMRobustTuner(**kwargs)
+
+        return model
 
     def build_model(self, policy: Policy) -> torch.nn.Module:
         feat_list = kINPUT_FEATS

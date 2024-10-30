@@ -61,13 +61,14 @@ class LearnedRobustLoss(torch.nn.Module):
         return bpe, penalty
 
     def split_tuner_out(self, tuner_out):
-        # First 3 items are going to be rho and lagragians, then BPE, then
-        # categorical features (size ratio and capacities)
-        eta = tuner_out[:, 0]
-        lamb = tuner_out[:, 1]
+        # First 3 items are going to be lagragians then BPE.
+        # After we have categorical features (size ratio and capacities)
+        # [lagrag0, lagrag1, bpe, size_ratio, k1, ..., kL]
+        eta = tuner_out[:, 0].view(-1, 1)
+        lamb = tuner_out[:, 1].view(-1, 1)
         bpe = tuner_out[:, 2]
         bpe = bpe.view(-1, 1)
-        categorical_feats = tuner_out[:, 1:]
+        categorical_feats = tuner_out[:, 3:]
 
         return eta, lamb, bpe, categorical_feats
 
@@ -94,15 +95,24 @@ class LearnedRobustLoss(torch.nn.Module):
         # and label is the workload and system params, rho at the end
         eta, lamb, bpe, categorical_feats = self.split_tuner_out(pred)
         rho = label[:, 9]
-        label = label[:9]
-        bpe, penalty = self.calc_mem_penalty(label, bpe)
+        sys_label = label[:, :9]
+        bpe, penalty = self.calc_mem_penalty(sys_label, bpe)
 
-        inputs = torch.concat([label, bpe, categorical_feats], dim=-1)
+        inputs = torch.concat([sys_label, bpe, categorical_feats], dim=-1)
+        # print(f"{label.shape=}")
+        # print(f"{rho.shape=}")
+        # print(f"{sys_label.shape=}")
+        # print(f"{inputs.shape=}")
         out = self.model(inputs)
+        # print(f"{eta.shape=}")
+        # print(f"{lamb.shape=}")
+        # print(f"{out.shape=}")
         out = (out - eta) / lamb
         out = self.kl_div_conj(out)
+        # print(f"after kl_div_conj {out=}")
         out = out.sum(dim=-1)
         out = eta + (lamb * rho) + (lamb * out)
+        out = out.square()
         out = out + penalty
         out = out.mean()
 

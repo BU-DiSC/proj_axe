@@ -87,6 +87,7 @@ class LTuneDataGenerator:
             system.E,
             system.H,
             system.N,
+            np.random.uniform(low=0, high=2),
         ]
 
         return line
