@@ -2,6 +2,7 @@ dill
 joblib
 mlos
 mlos-core
+mlos-core[smac]
 numba
 numpy
 pandas

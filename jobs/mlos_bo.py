@@ -7,7 +7,7 @@ import mlos_core.optimizers
 from axe.lsm.cost import EndureCost
 from axe.lcm.data.generator import KHybridGenerator
 from axe.lsm.solver import KLSMSolver
-from axe.lsm.types import LSMDesign, System, Policy, Workload, LSMBounds
+from axe.lsm.types import LSMDesign, System, Workload, LSMBounds
 from axe.data.io import Reader
 
 

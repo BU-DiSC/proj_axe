@@ -20,13 +20,13 @@
 [app]
 name = "AXE"
 run = [
-    # "DataGen",
+    "DataGen",
     # "LCMTrain",
     # "LTuneTrain",
-    "LTuneRobustTrain",
+    # "LTuneRobustTrain",
     # "BayesianPipelineBoTorch",
     # "BayesianPipelineMLOS"
-    "ExperimentMLOS",
+    # "ExperimentMLOS",
 ]
 
 # =============================================================================
@@ -61,7 +61,7 @@ data_dir = "/data"
 #   QFixed - Levels 1 -> L = Q
 #   YZHybrid - Levels 1 -> (L-1) = Q, Level L = Z
 #   KHybrid - Each level has own K_i decision
-design = 'QFixed'
+design = 'KHybrid'
 
 [lsm.bounds]
 max_considered_levels = 20                  # Max number of levels to consider
@@ -103,7 +103,7 @@ generator = "LTuner"            # Select between data for tuner (LTuner) or LCM
 file_prefix = "tuner"           # all files named file_prefix_000X.parquet
 num_workers = -1                # -1 forces all cores to be used
 num_files = 8                   # number of files to generate
-samples = 1048576               # per file sample
+samples = 4096                  # per file sample
 overwrite_if_exists = true      # if files exist overwrite with new data
 
 # -----------------------------------------------------------------------------

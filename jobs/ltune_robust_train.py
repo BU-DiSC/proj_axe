@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader
 
 from axe.lsm.types import LSMBounds, Policy
 from axe.ltune.data.dataset import LTuneDataSet
-from axe.ltune.loss import LearnedCostModelLoss
 from axe.ltune.robust_loss import LearnedRobustLoss
 from axe.ltune.model.builder import LTuneModelBuilder
 from axe.util.lr_scheduler import LRSchedulerBuilder
@@ -42,7 +41,7 @@ class LTuneRobustTrainJob:
 
     def _build_loss_fn(self) -> torch.nn.Module:
         model = LearnedRobustLoss(self.config, self.jconfig["loss_fn_path"])
-        if self.use_gpu  and torch.cuda.is_available():
+        if self.use_gpu and torch.cuda.is_available():
             model.to("cuda")
 
         return model
@@ -183,6 +182,7 @@ class LTuneRobustTrainJob:
         trainer.run()
 
         return trainer
+
 
 def main():
     from axe.data.io import Reader

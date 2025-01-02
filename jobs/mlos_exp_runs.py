@@ -37,22 +37,26 @@ class ExperimentMLOS:
                 policy = Policy.Tiering
             else:
                 policy = Policy.Leveling
-            return LSMDesign(h=bits_per_element, T=size_ratio, policy=policy)
+            design = LSMDesign(h=bits_per_element, T=size_ratio, policy=policy)
         elif self.model_type == Policy.YZHybrid:
             y_val: int = suggestion["y_val"].values[0]
             z_val: int = suggestion["z_val"].values[0]
-            return LSMDesign(
+            design = LSMDesign(
                 h=bits_per_element,
                 T=size_ratio,
                 policy=Policy.YZHybrid,
                 Y=y_val,
                 Z=z_val,
             )
-        elif self.model_type == Policy.KHybrid:
+        elif self.model_type == Policy.QFixed:
+            raise NotImplementedError
+        else: # self.model_type == Policy.KHybrid:
             kaps: np.ndarray = suggestion[[f"kap_{idx}" for idx in range(20)]].values[0]
-            return LSMDesign(
+            design = LSMDesign(
                 h=bits_per_element, T=size_ratio, policy=Policy.KHybrid, K=kaps.tolist()
             )
+
+        return design
 
     def _create_parameter_space(self, system: System) -> CS.ConfigurationSpace:
         norm_params = [
@@ -90,7 +94,9 @@ class ExperimentMLOS:
                 ),
             ]
             parameters = norm_params + yz_params
-        elif self.model_type == Policy.KHybrid:
+        elif self.model_type == Policy.QFixed:
+            raise NotImplementedError
+        else: # self.model_type == Policy.KHybrid:
             kap_params = [
                 CS.UniformIntegerHyperparameter(
                     name=f"kap_{i}", lower=1, upper=self.bounds.size_ratio_range[1] - 1
@@ -99,7 +105,7 @@ class ExperimentMLOS:
             ]
             parameters = norm_params + kap_params
         parameter_space = CS.ConfigurationSpace(seed=0)
-        parameter_space.add_hyperparameters(parameters)
+        parameter_space.add(parameters)
 
         return parameter_space
 

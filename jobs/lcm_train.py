@@ -41,7 +41,7 @@ class LCMTrainJob:
         loss = self.loss_builder.build(choice)
         self.log.info(f"Loss function: {choice}")
         if loss is None:
-            self.log.warn(f"Invalid loss function: {choice}")
+            self.log.warning(f"Invalid loss function: {choice}")
             raise KeyError
         if self.use_gpu and torch.cuda.is_available():
             loss.to("cuda")
