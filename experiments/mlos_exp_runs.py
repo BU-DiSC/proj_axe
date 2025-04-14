@@ -2,10 +2,8 @@ import logging
 import sqlite3
 
 import ConfigSpace as CS
-import numpy as np
 import pandas as pd
-from axe.lcm.data.generator import KHybridGenerator, ClassicGenerator, YZCostGenerator
-from axe.lsm.cost import EndureCost
+from axe.lsm.cost import Cost
 from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 from mlos_core.optimizers import SmacOptimizer
 
@@ -15,55 +13,42 @@ NUM_TRIALS = 100
 
 class ExperimentMLOS:
     def __init__(self, config: dict) -> None:
-        self.log: logging.Logger = logging.getLogger(config["log"]["name"])
+        self.log: logging.Logger = logging.getLogger(config["app"]["name"])
         self.bounds: LSMBounds = LSMBounds(**config["lsm"]["bounds"])
-        self.model_type = getattr(Policy, config["lsm"]["design"])
-        self.cf: EndureCost = EndureCost(self.bounds.max_considered_levels)
+        self.policy = getattr(Policy, config["lsm"]["policy"])
+        self.cf: Cost = Cost(self.bounds.max_considered_levels)
         self.db = MLOSDatabase(config)
         self.config = config
-        if self.model_type == Policy.Classic:
-            self.gen: ClassicGenerator = ClassicGenerator(self.bounds)
-        elif self.model_type == Policy.YZHybrid:
-            self.gen: YZCostGenerator = YZCostGenerator(self.bounds)
-        else:
-            self.gen: KHybridGenerator = KHybridGenerator(self.bounds)
 
     def _suggest_to_design(self, suggestion: pd.DataFrame) -> LSMDesign:
         bits_per_element: float = suggestion["bits_per_element"].values[0]
         size_ratio: int = suggestion["size_ratio"].values[0]
-        if self.model_type == Policy.Classic:
+        if self.policy == Policy.Classic:
             pol_val: int = suggestion["pol_val"].values[0]
-            if pol_val == 0:
-                policy = Policy.Tiering
-            else:
-                policy = Policy.Leveling
-            design = LSMDesign(h=bits_per_element, T=size_ratio, policy=policy)
-        elif self.model_type == Policy.YZHybrid:
-            y_val: int = suggestion["y_val"].values[0]
-            z_val: int = suggestion["z_val"].values[0]
-            design = LSMDesign(
-                h=bits_per_element,
-                T=size_ratio,
-                policy=Policy.YZHybrid,
-                Y=y_val,
-                Z=z_val,
-            )
-        elif self.model_type == Policy.QFixed:
+            policy = Policy.Tiering if pol_val == 0 else Policy.Leveling
+            kapacity = ()
+        elif self.policy == Policy.Fluid:
+            kapacity = (suggestion["y_val"].values[0], suggestion["z_val"].values[0])
+            policy = Policy.Fluid
+        elif self.policy == Policy.QHybrid:
             raise NotImplementedError
-        else: # self.model_type == Policy.KHybrid:
-            kaps: np.ndarray = suggestion[[f"kap_{idx}" for idx in range(20)]].values[0]
-            design = LSMDesign(
-                h=bits_per_element, T=size_ratio, policy=Policy.KHybrid, K=kaps.tolist()
-            )
+        else:  # self.model_type == Policy.Kapacity:
+            policy = Policy.Kapacity
+            kapacity = suggestion[[f"kap_{idx}" for idx in range(20)]].values[0]
 
-        return design
+        return LSMDesign(
+            bits_per_elem=bits_per_element,
+            size_ratio=size_ratio,
+            policy=policy,
+            kapacity=kapacity,
+        )
 
     def _create_parameter_space(self, system: System) -> CS.ConfigurationSpace:
         parameters = [
             CS.UniformFloatHyperparameter(
                 name="bits_per_element",
                 lower=self.bounds.bits_per_elem_range[0],
-                upper=system.H - 0.1,
+                upper=system.mem_budget - 0.1,
             ),
             CS.UniformIntegerHyperparameter(
                 name="size_ratio",
@@ -71,16 +56,11 @@ class ExperimentMLOS:
                 upper=self.bounds.size_ratio_range[1] - 1,  # ConfigSpace is inclusive
             ),
         ]
-        if self.model_type == Policy.Classic:
-            classic_params = [
-                CS.UniformIntegerHyperparameter(
-                    name="pol_val",
-                    lower=0,
-                    upper=1,
-                )
+        if self.policy == Policy.Classic:
+            parameters += [
+                CS.UniformIntegerHyperparameter(name="pol_val", lower=0, upper=1)
             ]
-            parameters += classic_params
-        if self.model_type == Policy.YZHybrid:
+        elif self.policy == Policy.Fluid:
             yz_params = [
                 CS.UniformIntegerHyperparameter(
                     name="y_val",
@@ -93,10 +73,10 @@ class ExperimentMLOS:
                     upper=self.bounds.size_ratio_range[1] - 1,
                 ),
             ]
-            parameters = norm_params + yz_params
-        elif self.model_type == Policy.QFixed:
+            parameters += yz_params
+        elif self.policy == Policy.QHybrid:
             raise NotImplementedError
-        else: # self.model_type == Policy.KHybrid:
+        else:  # self.model_type == Policy.KHybrid:
             kap_params = [
                 CS.UniformIntegerHyperparameter(
                     name=f"kap_{i}", lower=1, upper=self.bounds.size_ratio_range[1] - 1
@@ -130,9 +110,7 @@ class ExperimentMLOS:
             suggestion, _ = optimizer.suggest()
             assert isinstance(suggestion, pd.DataFrame)
             design = self._suggest_to_design(suggestion)
-            cost = self.cf.calc_cost(
-                design, system, workload.z0, workload.z1, workload.q, workload.w
-            )
+            cost = self.cf.calc_cost(design, system, workload)
             optimizer.register(
                 configs=suggestion, scores=pd.DataFrame([{"cost": cost}])
             )
@@ -146,10 +124,7 @@ class ExperimentMLOS:
         self.db.create_tables()
         for rep_wl in self.config["workloads"]:
             workload = Workload(
-                z0=rep_wl["z0"],
-                z1=rep_wl["z1"],
-                q=rep_wl["q"],
-                w=rep_wl["w"],
+                z0=rep_wl["z0"], z1=rep_wl["z1"], q=rep_wl["q"], w=rep_wl["w"]
             )
             row_id = self.db.log_workload(workload, system)
             self.log.info(f"Workload: {workload}")
@@ -201,7 +176,7 @@ class MLOSDatabase:
 
         if self.model_type == Policy.Classic:
             policy_field = "policy TEXT"
-        elif self.model_type == Policy.YZHybrid:
+        elif self.model_type == Policy.Fluid:
             policy_field = "y_val INTEGER, z_val INTEGER"
         else:
             kap_fields = ", ".join([f"kap{i} REAL" for i in range(20)])
@@ -242,11 +217,11 @@ class MLOSDatabase:
                 workload.z1,
                 workload.q,
                 workload.w,
-                int(system.E),
-                system.s,
-                system.B,
-                system.N,
-                system.H,
+                int(system.entry_size),
+                system.selectivity,
+                system.entries_per_page,
+                system.num_entries,
+                system.mem_budget,
                 system.phi,
             ),
         )
@@ -277,10 +252,17 @@ class MLOSDatabase:
                     cost
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (workload_id, trial, round, design.h, int(design.T), str(design.policy))
+                (
+                    workload_id,
+                    trial,
+                    round,
+                    design.bits_per_elem,
+                    int(design.size_ratio),
+                    str(design.policy),
+                )
                 + (cost,),
             )
-        elif self.model_type == Policy.YZHybrid:
+        elif self.model_type == Policy.Fluid:
             cursor.execute(
                 """
                 INSERT INTO tunings (
@@ -297,10 +279,10 @@ class MLOSDatabase:
                     workload_id,
                     trial,
                     round,
-                    design.h,
-                    int(design.T),
-                    int(design.Y),
-                    int(design.Z),
+                    design.bits_per_elem,
+                    int(design.size_ratio),
+                    int(design.kapacity[0]),
+                    int(design.kapacity[1]),
                 )
                 + (cost,),
             )
@@ -326,10 +308,10 @@ class MLOSDatabase:
                     workload_id,
                     trial,
                     round,
-                    design.h,
-                    int(design.T),
+                    design.bits_per_elem,
+                    int(design.size_ratio),
                 )
-                + tuple(design.K)
+                + tuple(design.kapacity)
                 + (cost,),
             )
 

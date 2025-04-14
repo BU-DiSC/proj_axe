@@ -20,12 +20,10 @@
 [app]
 name = "AXE"
 run = [
-    "DataGen",
-    # "LCMTrain",
-    # "LTuneTrain",
-    # "LTuneRobustTrain",
-    # "BayesianPipelineBoTorch",
-    # "BayesianPipelineMLOS"
+    "create_lcm_data",
+    "train_lcm",
+    "create_ltuner_data",
+    "train_ltuner"
     # "ExperimentMLOS",
 ]
 random_seed = 2169
@@ -36,11 +34,9 @@ disable_tqdm = false
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [log]
-name = 'axe-logger'
 format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
 datefmt = '%d-%m-%y:%H:%M:%S'
 level = "DEBUG"
-disable_tqdm = false
 
 # =============================================================================
 # HEADER IO
@@ -52,19 +48,18 @@ database = "axe_results.db"
 
 # =============================================================================
 # HEADER LSM
-#   Generic LSM settings including maximum bounds, system settings, starting
-#   budget for memory, number of elements, etc
+#   Generic LSM settings
 # =============================================================================
 [lsm]
-# Design will effect everything else down stream (e.g. choice of neural network
+# Policy will effect everything else down stream (e.g. choice of neural network
 # architecture for learned cost model)
 #   Tiering
 #   Leveling
 #   Classic - Considers both leveing and tiering
-#   QFixed - Levels 1 -> L = Q
-#   YZHybrid - Levels 1 -> (L-1) = Q, Level L = Z
-#   KHybrid - Each level has own K_i decision
-design = 'KHybrid'
+#   QHybrid - Levels 1 -> L = Q
+#   Fluid - Levels 1 -> (L-1) = Q, Level L = Z
+#   Kapacity - Each level has own K_i decision
+policy = 'Kapacity'
 
 [lsm.bounds]
 max_considered_levels = 20                  # Max number of levels to consider
@@ -113,7 +108,7 @@ overwrite_if_exists = false
 [job.train_lcm]
 # --------------------------------------
 max_epochs = 100
-save_dir = "data/lcm/models/kaplsm_112624_1156"
+save_dir = "data/lcm/models/kaplsm_250514_1230"
 no_checkpoint = false
 
 data_split = 0.9
@@ -152,9 +147,9 @@ overwrite_if_exists = true
 [job.train_ltuner]
 # --------------------------------------
 max_epochs = 100
-save_dir = "data/ltuner/models/robust_kaplsm_250305_1413"
+save_dir = "data/ltuner/models/kaplsm_250514_1230"
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "data/lcm/models/kaplsm_112624_1156"
+loss_fn_path = "data/lcm/models/kaplsm_250514_1230"
 optimizer = "AdamW"
 lr_scheduler = "CosineAnnealing"
 no_checkpoint = false
