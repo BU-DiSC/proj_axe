@@ -5,9 +5,8 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 
-OUT_WIDTH = 4
 
-class ClassicModel(nn.Module):
+class ClassicLCM(nn.Module):
     def __init__(
         self,
         num_feats: int,
@@ -18,7 +17,8 @@ class ClassicModel(nn.Module):
         dropout_percentage: float = 0,
         policy_embedding_size: int = 1,
         decision_dim: int = 64,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+        disable_one_hot_encoding: bool = False,
     ) -> None:
         super().__init__()
         width = (num_feats - 2) + embedding_size + policy_embedding_size
@@ -45,27 +45,28 @@ class ClassicModel(nn.Module):
         self.capacity_range = capacity_range
         self.num_feats = num_feats
         self.decision_dim = decision_dim
+        self.disable_one_hot_encoding = disable_one_hot_encoding
 
         for module in self.modules():
             if isinstance(module, nn.Linear):
-                nn.init.xavier_normal_(module.weight)
+                nn.init.kaiming_normal_(module.weight)
 
     def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         t_boundary = self.num_feats - 2
         policy_boundary = t_boundary + self.capacity_range
         feats = x[:, :t_boundary]
 
-        if self.training:
-            size_ratio = x[:, -1]
+        if self.disable_one_hot_encoding:
+            policy = x[:, policy_boundary : policy_boundary + 2]
+            size_ratio = x[:, t_boundary:policy_boundary]
+        else:
+            size_ratio = x[:, -2]
             size_ratio = size_ratio.to(torch.long)
             size_ratio = F.one_hot(size_ratio, num_classes=self.capacity_range)
-            policy = x[:, t_boundary]
+            policy = x[:, -1]
             policy = policy.to(torch.long)
             policy = F.one_hot(policy, num_classes=2)
-        else:
-            policy = x[:, policy_boundary : policy_boundary + 2]
-            size_ratio = x[:, t_boundary : policy_boundary]
-        
+
         return (feats, size_ratio, policy)
 
     def _forward_impl(self, x: Tensor) -> Tensor:
@@ -90,7 +91,6 @@ class ClassicModel(nn.Module):
         q = self.q(out[:, 2 * head_dim : 3 * head_dim])
         w = self.w(out[:, 3 * head_dim : 4 * head_dim])
         out = torch.cat([z0, z1, q, w], dim=-1)
-
 
         return out
 

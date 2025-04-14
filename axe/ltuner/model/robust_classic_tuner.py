@@ -1,10 +1,11 @@
 from typing import Callable, Optional
 
+from reinmax import reinmax
 from torch import Tensor, nn
 import torch
 
 
-class ClassicTuner(nn.Module):
+class RobustClassicTuner(nn.Module):
     def __init__(
         self,
         num_feats: int,
@@ -12,7 +13,8 @@ class ClassicTuner(nn.Module):
         hidden_length: int = 1,
         hidden_width: int = 32,
         dropout_percentage: float = 0,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        categorical_mode: str = "gumbel",
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
     ) -> None:
         super().__init__()
         if norm_layer is None:
@@ -30,9 +32,12 @@ class ClassicTuner(nn.Module):
         self.t_decision = nn.Linear(hidden_width, capacity_range)
         self.bits_decision = nn.Linear(hidden_width, 1)
         self.policy_decision = nn.Linear(hidden_width, 2)
+        self.eta_decision = nn.Linear(hidden_width, 1)
+        self.lamb_decision = nn.Linear(hidden_width, 1)
 
         self.capacity_range = capacity_range
         self.num_feats = num_feats
+        self.categorical_mode = categorical_mode
 
         for module in self.modules():
             if isinstance(module, nn.Linear):
@@ -48,11 +53,18 @@ class ClassicTuner(nn.Module):
 
         bits = self.bits_decision(out)
         t = self.t_decision(out)
-        t = nn.functional.gumbel_softmax(t, tau=temp, hard=hard)
         policy = self.policy_decision(out)
-        policy = nn.functional.gumbel_softmax(policy, tau=temp, hard=hard)
+        if self.categorical_mode == "reinmax":
+            t, _ = reinmax(t, tau=temp)
+            policy, _ = reinmax(policy, tau=temp)
+        else:  # categorical_mode == 'gumbel'
+            t = nn.functional.gumbel_softmax(t, tau=temp, hard=hard)
+            policy = nn.functional.gumbel_softmax(policy, tau=temp, hard=hard)
 
-        out = torch.concat([bits, t, policy], dim=-1)
+        eta = self.eta_decision(out)
+        lamb = self.lamb_decision(out)
+
+        out = torch.concat([eta, lamb, bits, t, policy], dim=-1)
 
         return out
 

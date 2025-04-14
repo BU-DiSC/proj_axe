@@ -1,12 +1,13 @@
 from typing import Optional, Callable, Tuple, List
+import torch
 
 import numpy as np
 import scipy.optimize as SciOpt
 
+from axe.lcm.model.wrapper import LCMWrapper
 from axe.lsm.cost import Cost
 from axe.lsm.types import LSMDesign, Policy, System, LSMBounds, Workload
-from .util import kl_div_con
-from .util import get_bounds
+from axe.lsm.solver.util import get_bounds
 
 H_DEFAULT = 3
 T_DEFAULT = 5
@@ -14,13 +15,19 @@ LAMBDA_DEFAULT = 10
 ETA_DEFAULT = 10
 
 
-class ClassicSolver:
-    def __init__(self, bounds: LSMBounds, policies: Optional[List[Policy]] = None):
+class ClassicLCMSolver:
+    def __init__(
+        self,
+        bounds: LSMBounds,
+        lcm: LCMWrapper,
+        policies: Optional[List[Policy]] = None,
+    ) -> None:
         self.bounds = bounds
         self.costfunc = Cost(bounds.max_considered_levels)
         if policies is None:
             policies = [Policy.Tiering, Policy.Leveling]
         self.policies = policies
+        self.lcm = lcm
 
     def robust_objective(
         self,
@@ -30,22 +37,18 @@ class ClassicSolver:
         workload: Workload,
         rho: float,
     ) -> float:
-        eta, lamb, h, T, = x
+        eta, lamb, h, T = x
+        wl = torch.Tensor([workload.z0, workload.z1, workload.q, workload.w]).clamp(
+            min=1e-6
+        )
         design = LSMDesign(bits_per_elem=h, size_ratio=T, policy=policy, kapacity=())
-        query_cost = 0
-        query_cost += workload.z0 * kl_div_con(
-            (self.costfunc.Z0(design, system) - eta) / lamb
-        )
-        query_cost += workload.z1 * kl_div_con(
-            (self.costfunc.Z1(design, system) - eta) / lamb
-        )
-        query_cost += workload.q * kl_div_con(
-            (self.costfunc.Q(design, system) - eta) / lamb
-        )
-        query_cost += workload.w * kl_div_con(
-            (self.costfunc.W(design, system) - eta) / lamb
-        )
-        cost = eta + (rho * lamb) + (lamb * query_cost)
+        cost = self.lcm(design, system, workload).flatten()
+        cost = cost / wl
+        cost = (cost - eta) / max(lamb, 1)
+        cost = torch.exp(cost) - 1
+        cost = cost * wl
+        cost = eta + (lamb * rho) + (lamb * cost.sum().item())
+
         return cost
 
     def nominal_objective(
@@ -54,10 +57,10 @@ class ClassicSolver:
         policy: Policy,
         system: System,
         workload: Workload,
-    ):
+    ) -> float:
         h, T = x
         design = LSMDesign(bits_per_elem=h, size_ratio=T, policy=policy, kapacity=())
-        cost = self.costfunc.calc_cost(design, system, workload)
+        cost = self.lcm(design, system, workload).sum().item()
 
         return cost
 

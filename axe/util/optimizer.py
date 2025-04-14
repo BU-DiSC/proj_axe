@@ -1,6 +1,6 @@
 from typing import Any
-import torch.optim as Opt
 
+import torch.optim as Opt
 from torch.nn import Module
 
 
@@ -17,13 +17,13 @@ class OptimizerBuilder:
     def _build_sgd(self, model: Module) -> Opt.SGD:
         return Opt.SGD(model.parameters(), **self.opt_kwargs["SGD"])
 
-    def build_optimizer(
-        self,
-        optimizer_choice: str,
-        model: Module,
-    ) -> Opt.Optimizer:
+    def _build_adamw(self, model: Module) -> Opt.AdamW:
+        return Opt.AdamW(model.parameters(), **self.opt_kwargs["AdamW"])
+
+    def build(self, optimizer_choice: str, model: Module) -> Opt.Optimizer:
         optimizers = {
             "Adam": self._build_adam,
+            "AdamW": self._build_adamw,
             "Adagrad": self._build_adagrad,
             "SGD": self._build_sgd,
         }

@@ -1,43 +1,51 @@
-from typing import Optional, Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import numpy as np
 import scipy.optimize as SciOpt
+from axe.lsm.cost import Cost
+from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 
-from axe.lsm.cost import EndureCost
-from axe.lsm.types import LSMDesign, Policy, System, LSMBounds
-from .util import kl_div_con, get_bounds
 from .util import (
-    H_DEFAULT,
-    T_DEFAULT,
-    LAMBDA_DEFAULT,
     ETA_DEFAULT,
+    H_DEFAULT,
+    LAMBDA_DEFAULT,
+    T_DEFAULT,
     Y_DEFAULT,
     Z_DEFAULT,
+    get_bounds,
+    kl_div_con,
 )
 
 
-class YZLSMSolver:
+class FluidLSMSolver:
     def __init__(self, bounds: LSMBounds):
         self.bounds = bounds
-        self.cf = EndureCost(bounds.max_considered_levels)
+        self.costfunc = Cost(bounds.max_considered_levels)
 
     def robust_objective(
         self,
         x: np.ndarray,
         system: System,
         rho: float,
-        z0: float,
-        z1: float,
-        q: float,
-        w: float,
+        workload: Workload,
     ) -> float:
         h, t, y, z, lamb, eta = x
-        design = LSMDesign(h=h, T=t, Y=y, Z=z, policy=Policy.YZHybrid)
+        design = LSMDesign(
+            bits_per_elem=h, size_ratio=t, policy=Policy.Fluid, kapacity=(y, z)
+        )
         query_cost = 0
-        query_cost += z0 * kl_div_con((self.cf.Z0(design, system) - eta) / lamb)
-        query_cost += z1 * kl_div_con((self.cf.Z1(design, system) - eta) / lamb)
-        query_cost += q * kl_div_con((self.cf.Q(design, system) - eta) / lamb)
-        query_cost += w * kl_div_con((self.cf.W(design, system) - eta) / lamb)
+        query_cost += workload.z0 * kl_div_con(
+            (self.costfunc.Z0(design, system) - eta) / lamb
+        )
+        query_cost += workload.z1 * kl_div_con(
+            (self.costfunc.Z1(design, system) - eta) / lamb
+        )
+        query_cost += workload.q * kl_div_con(
+            (self.costfunc.Q(design, system) - eta) / lamb
+        )
+        query_cost += workload.w * kl_div_con(
+            (self.costfunc.W(design, system) - eta) / lamb
+        )
         cost = eta + (rho * lamb) + (lamb * query_cost)
 
         return cost
@@ -46,14 +54,13 @@ class YZLSMSolver:
         self,
         x: np.ndarray,
         system: System,
-        z0: float,
-        z1: float,
-        q: float,
-        w: float,
+        workload: Workload,
     ) -> float:
         h, t, y, z = x
-        design = LSMDesign(h=h, T=t, Y=y, Z=z, policy=Policy.YZHybrid)
-        cost = self.cf.calc_cost(design, system, z0, z1, q, w)
+        design = LSMDesign(
+            bits_per_elem=h, size_ratio=t, policy=Policy.Fluid, kapacity=(y, z)
+        )
+        cost = self.costfunc.calc_cost(design, system, workload)
 
         return cost
 
@@ -76,10 +83,7 @@ class YZLSMSolver:
     def get_nominal_design(
         self,
         system: System,
-        z0: float,
-        z1: float,
-        q: float,
-        w: float,
+        workload: Workload,
         init_args: np.ndarray = np.array([H_DEFAULT, T_DEFAULT, Y_DEFAULT, Z_DEFAULT]),
         minimizer_kwargs: dict = {},
         callback_fn: Optional[Callable] = None,
@@ -88,7 +92,7 @@ class YZLSMSolver:
             "method": "SLSQP",
             "bounds": get_bounds(
                 bounds=self.bounds,
-                policy=Policy.YZHybrid,
+                policy=Policy.Fluid,
                 system=system,
                 robust=False,
             ),
@@ -97,17 +101,16 @@ class YZLSMSolver:
         default_kwargs.update(minimizer_kwargs)
 
         solution = SciOpt.minimize(
-            fun=lambda x: self.nominal_objective(x, system, z0, z1, q, w),
+            fun=lambda x: self.nominal_objective(x, system, workload),
             x0=init_args,
             callback=callback_fn,
             **default_kwargs
         )
         design = LSMDesign(
-            h=solution.x[0],
-            T=solution.x[1],
-            Y=solution.x[2],
-            Z=solution.x[3],
-            policy=Policy.YZHybrid,
+            bits_per_elem=solution.x[0],
+            size_ratio=solution.x[1],
+            policy=Policy.Fluid,
+            kapacity=(solution.x[2], solution.x[3]),
         )
 
         return design, solution

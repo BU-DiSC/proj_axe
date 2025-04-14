@@ -1,73 +1,115 @@
 import numpy as np
-import axe.lsm.lsm_cost as Cost
-from axe.lsm.types import Policy, System, LSMDesign
+import axe.lsm.lsm_cost_model as CostModel
+from axe.lsm.types import Policy, System, LSMDesign, Workload
 
 
-class EndureCost:
+class Cost:
     def __init__(self, max_levels: int) -> None:
         super().__init__()
         self.max_levels = max_levels
 
     def L(self, design: LSMDesign, system: System, ceil=False):
-        level = Cost.calc_level(design.h, design.T, system.E, system.H, system.N, ceil)
+        level = CostModel.calc_level(
+            design.bits_per_elem,
+            design.size_ratio,
+            system.entry_size,
+            system.mem_budget,
+            system.num_entries,
+            ceil,
+        )
 
         return level
 
     def mbuff(self, design: LSMDesign, system: System):
-        return Cost.calc_mbuff(design.h, system.H, system.N)
+        return CostModel.calc_mbuff(
+            design.bits_per_elem, system.mem_budget, system.num_entries
+        )
 
     def create_k_list(self, design: LSMDesign, system: System) -> np.ndarray:
-        if design.policy is Policy.KHybrid:
-            assert design.K is not None
-            k = np.array(design.K)
+        assert design.kapacity is not None
+        if design.policy is Policy.Kapacity:
+            kapacities = np.array(design.kapacity)
         elif design.policy is Policy.Tiering:
-            k = np.full(self.max_levels, design.T - 1)
+            kapacities = np.full(self.max_levels, design.size_ratio - 1)
         elif design.policy is Policy.Leveling:
-            k = np.ones(self.max_levels)
-        elif design.policy is Policy.YZHybrid:
-            levels = Cost.calc_level(
-                design.h, design.T, system.E, system.H, system.N, True
+            kapacities = np.ones(self.max_levels)
+        elif design.policy is Policy.Fluid:
+            levels = CostModel.calc_level(
+                design.bits_per_elem,
+                design.size_ratio,
+                system.entry_size,
+                system.mem_budget,
+                system.num_entries,
+                True,
             )
             levels = int(levels)
-            k = np.full(levels - 1, design.Y)
-            k = np.concatenate((k, [design.Z]))
-            k = np.pad(
-                k,
-                (0, self.max_levels - len(k)),
+            kapacities = np.full(levels - 1, design.kapacity[0])
+            kapacities = np.concatenate((kapacities, [design.kapacity[1]]))
+            kapacities = np.pad(
+                kapacities,
+                (0, self.max_levels - len(kapacities)),
                 "constant",
                 constant_values=(1.0, 1.0),
             )
-        elif design.policy is Policy.QFixed:
-            k = np.full(self.max_levels, design.Q)
+        elif design.policy is Policy.QHybrid:
+            kapacities = np.full(self.max_levels, design.kapacity[0])
         else:
-            k = np.ones(self.max_levels)
+            kapacities = np.ones(self.max_levels)
 
-        return k
+        return kapacities
 
     def Z0(self, design: LSMDesign, system: System) -> float:
-        k = self.create_k_list(design, system)
-        cost = Cost.empty_op(design.h, design.T, k, system.N, system.E, system.H)
+        kapacities = self.create_k_list(design, system)
+        cost = CostModel.empty_op(
+            design.bits_per_elem,
+            design.size_ratio,
+            kapacities,
+            system.num_entries,
+            system.entry_size,
+            system.mem_budget,
+        )
 
         return cost
 
     def Z1(self, design: LSMDesign, system: System) -> float:
-        k = self.create_k_list(design, system)
-        cost = Cost.non_empty_op(design.h, design.T, k, system.E, system.H, system.N)
+        kapacities = self.create_k_list(design, system)
+        cost = CostModel.non_empty_op(
+            design.bits_per_elem,
+            design.size_ratio,
+            kapacities,
+            system.entry_size,
+            system.mem_budget,
+            system.num_entries,
+        )
 
         return cost
 
     def Q(self, design: LSMDesign, system: System) -> float:
-        k = self.create_k_list(design, system)
-        cost = Cost.range_op(
-            design.h, design.T, k, system.B, system.s, system.E, system.H, system.N
+        kapacities = self.create_k_list(design, system)
+        cost = CostModel.range_op(
+            design.bits_per_elem,
+            design.size_ratio,
+            kapacities,
+            system.entries_per_page,
+            system.selectivity,
+            system.entry_size,
+            system.mem_budget,
+            system.num_entries,
         )
 
         return cost
 
     def W(self, design: LSMDesign, system: System) -> float:
-        k = self.create_k_list(design, system)
-        cost = Cost.write_op(
-            design.h, design.T, k, system.B, system.E, system.H, system.N, system.phi
+        kapacities = self.create_k_list(design, system)
+        cost = CostModel.write_op(
+            design.bits_per_elem,
+            design.size_ratio,
+            kapacities,
+            system.entries_per_page,
+            system.entry_size,
+            system.mem_budget,
+            system.num_entries,
+            system.phi,
         )
 
         return cost
@@ -76,25 +118,22 @@ class EndureCost:
         self,
         design: LSMDesign,
         system: System,
-        z0: float,
-        z1: float,
-        q: float,
-        w: float,
+        workload: Workload,
     ):
-        k = self.create_k_list(design, system)
-        cost = Cost.calc_cost(
-            design.h,
-            design.T,
-            k,
-            z0,
-            z1,
-            q,
-            w,
-            system.B,
-            system.s,
-            system.E,
-            system.H,
-            system.N,
+        kapacities = self.create_k_list(design, system)
+        cost = CostModel.calc_cost(
+            design.bits_per_elem,
+            design.size_ratio,
+            kapacities,
+            workload.z0,
+            workload.z1,
+            workload.q,
+            workload.w,
+            system.entries_per_page,
+            system.selectivity,
+            system.entry_size,
+            system.mem_budget,
+            system.num_entries,
             system.phi,
         )
 

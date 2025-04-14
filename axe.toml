@@ -28,6 +28,8 @@ run = [
     # "BayesianPipelineMLOS"
     # "ExperimentMLOS",
 ]
+random_seed = 2169
+disable_tqdm = false
 
 # =============================================================================
 # HEADER LOGGER
@@ -45,7 +47,8 @@ disable_tqdm = false
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [io]
-data_dir = "/data"
+data_dir = "data"
+database = "axe_results.db"
 
 # =============================================================================
 # HEADER LSM
@@ -65,12 +68,12 @@ design = 'KHybrid'
 
 [lsm.bounds]
 max_considered_levels = 20                  # Max number of levels to consider
-size_ratio_range = [2, 31]                  # low, high of size ratios to consider
+size_ratio_range = [2, 22]                  # low, high of size ratios to consider
 page_sizes = [4, 8, 16]                     # KB pages
 entry_sizes = [1024, 2048, 4096, 8192]      # bits
 memory_budget_range = [5, 20]               # low, high, bits per element
 selectivity_range = [1e-7, 1e-9]            # low, high
-elements_range = [100000000, 1000000000]    # element range
+elements_range = [10000000, 100000000]    # element range
 
 # Default system values if not generating random systems
 [lsm.system]
@@ -92,26 +95,32 @@ w = 0.202
 # HEADER JOB
 #   Settings for each individual job (executable)
 # =============================================================================
-[job]
-use_gpu_if_avail = false
+# --------------------------------------
+[job] # Common settings across all jobs
+# --------------------------------------
+use_gpu_if_avail = true
 
-# -----------------------------------------------------------------------------
-[job.DataGen]
-# -----------------------------------------------------------------------------
-dir = "lcm/train/std"
-generator = "LTuner"            # Select between data for tuner (LTuner) or LCM
-file_prefix = "tuner"           # all files named file_prefix_000X.parquet
-num_workers = -1                # -1 forces all cores to be used
-num_files = 8                   # number of files to generate
-samples = 4096                  # per file sample
-overwrite_if_exists = true      # if files exist overwrite with new data
+# --------------------------------------
+[job.create_lcm_data]
+# --------------------------------------
+output_dir = "data/lcm/train_data/kaplsm"
+num_samples = 65536
+num_files = 16
+num_workers = 8
+overwrite_if_exists = false
 
-# -----------------------------------------------------------------------------
-[job.LCMTrain]
-# -----------------------------------------------------------------------------
-max_epochs = 50
-save_dir = "models/lcm/kcost"
+# --------------------------------------
+[job.train_lcm]
+# --------------------------------------
+max_epochs = 100
+save_dir = "data/lcm/models/kaplsm_112624_1156"
 no_checkpoint = false
+
+data_split = 0.9
+data_dir = "data/lcm/train_data/kaplsm"
+batch_size = 128
+shuffle = true
+num_workers = 4
 
 # Different loss functions to train via
 #   MSE - Mean squared error
@@ -123,59 +132,38 @@ no_checkpoint = false
 loss_fn = "MSE"
 
 # Supported optimizers
-#   [SGD, Adam, Adagrad]
+#   [SGD, Adam, Adagrad, AdamW]
 optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "Constant"
+lr_scheduler = "CosineAnnealing"
 
-[job.LCMTrain.train]
-dir = "train-data/kcost-t30"
-batch_size = 1024
-shuffle = true
-num_workers = 2
-drop_last = true
+# --------------------------------------
+[job.create_ltuner_data]
+# --------------------------------------
+output_dir = "data/ltuner/train_data/std"
+num_samples = 65536
+num_files = 32
+num_workers = 8
+overwrite_if_exists = true
 
-[job.LCMTrain.test]
-dir = "test-data/kcost-t30"
-batch_size = 4096
-shuffle = false
-num_workers = 4
-drop_last = true
-
-# -----------------------------------------------------------------------------
-[job.LTuneTrain]
-# -----------------------------------------------------------------------------
-max_epochs = 50
-save_dir = "models/ltune/klsm"
-
+# --------------------------------------
+[job.train_ltuner]
+# --------------------------------------
+max_epochs = 100
+save_dir = "data/ltuner/models/robust_kaplsm_250305_1413"
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/lcm/kcost"
-
-# Optimizer settings in header.optimizer
-#   [SGD, Adam, Adagrad]
-optimizer = "Adam"
-
-# Learning rate schedulers, settings in header.scheduler
-#   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "Constant"
-
+loss_fn_path = "data/lcm/models/kaplsm_112624_1156"
+optimizer = "AdamW"
+lr_scheduler = "CosineAnnealing"
 no_checkpoint = false
 
-[job.LTuneTrain.train]
-dir = "train-data/ltune/std"
+data_split = 0.9
+data_dir = "data/ltuner/train_data/std"
 batch_size = 1024
 shuffle = true
-num_workers = 1
-drop_last = true
-
-[job.LTuneTrain.test]
-dir = "test-data/ltune/std"
-batch_size = 4096
-shuffle = false
-num_workers = 1
-drop_last = true
+num_workers = 4
 
 # -----------------------------------------------------------------------------
 [job.BayesianOptimization]
@@ -220,10 +208,12 @@ db_name = "yz_db_cost.db"
 optimizer = "Smac"
 num_runs = 1000
 iteration = 50
+
 # =============================================================================
 # HEADER LCM
 #   Add configurations related to learned cost models
 # =============================================================================
+
 # -----------------------------------------------------------------------------
 # HEADER LCM.MODELS
 #   Configuration for specific models
@@ -231,7 +221,7 @@ iteration = 50
 [lcm.model]
 embedding_size = 8
 hidden_length = 3
-hidden_width = 32
+hidden_width = 64
 decision_dim = 64
 dropout = 0.0           # dropout percentage
 norm_layer = "Batch"    # "Batch" or "Layer" norm
@@ -240,39 +230,31 @@ norm_layer = "Batch"    # "Batch" or "Layer" norm
 policy_embedding_size = 4
 
 # =============================================================================
-# END LCM
-# =============================================================================
-
-# =============================================================================
 # HEADER LTUNE
 #   Learned tuner module
 # =============================================================================
-[ltune]
+[ltuner]
 penalty_factor = 10
 
 # kwargs specific to LTune models during forward pass
-[ltune.train_kwargs]
-temp = 1
+[ltuner.train_kwargs]
+temp = 2
 hard = false
 
-[ltune.test_kwargs]
-temp = 0.01
+[ltuner.validate_kwargs]
+temp = 1
 hard = true
 
 # -----------------------------------------------------------------------------
-# HEADER LTUNE.MODEL
+# HEADER LTUNER.MODEL
 #   Model configurations
 # -----------------------------------------------------------------------------
-[ltune.model]
-hidden_length = 1
+[ltuner.model]
+hidden_length = 4
 hidden_width = 64
-dropout = 0                     # dropout percentage
+dropout = 0.1                     # dropout percentage
 norm_layer = "Batch"            # batch or layer norm
-categorical_mode = "reinmax"    # reinmax or gumbel
-
-# =============================================================================
-# END LTUNE
-# =============================================================================
+categorical_mode = "gumbel"    # reinmax or gumbel
 
 # =============================================================================
 # HEADER SCHEDULERS
@@ -290,6 +272,9 @@ gamma = 0.9
 #   Settings for any optimizers
 # =============================================================================
 [optimizer.Adam]
+lr = 0.0001
+
+[optimizer.AdamW]
 lr = 0.001
 
 [optimizer.SGD]

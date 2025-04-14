@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 
 
-class YZModel(nn.Module):
+class QHybridLCM(nn.Module):
     def __init__(
         self,
         num_feats: int,
@@ -16,15 +16,15 @@ class YZModel(nn.Module):
         hidden_width: int = 32,
         dropout_percentage: float = 0,
         decision_dim: int = 64,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+        disable_one_hot_encoding: bool = False,
     ) -> None:
         super().__init__()
-        width = (num_feats - 3) + (3 * embedding_size)
+        width = (num_feats - 2) + (2 * embedding_size)
         if norm_layer is None:
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)
-        self.y_embedding = nn.Linear(capacity_range, embedding_size)
-        self.z_embedding = nn.Linear(capacity_range, embedding_size)
+        self.q_embedding = nn.Linear(capacity_range, embedding_size)
 
         self.in_norm = norm_layer(width)
         self.in_layer = nn.Linear(width, hidden_width)
@@ -45,43 +45,37 @@ class YZModel(nn.Module):
         self.capacity_range = capacity_range
         self.num_feats = num_feats
         self.decision_dim = decision_dim
+        self.disable_one_hot_encoding = disable_one_hot_encoding
 
         for module in self.modules():
             if isinstance(module, nn.Linear):
                 nn.init.xavier_normal_(module.weight)
 
-
-    def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        categorical_bound = self.num_feats - 3
+    def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
+        categorical_bound = self.num_feats - 2
         feats = x[:, :categorical_bound]
         capacities = x[:, categorical_bound:]
 
-        if self.training:
+        if self.disable_one_hot_encoding:
+            capacities = torch.unflatten(capacities, 1, (-1, self.capacity_range))
+        else:
             capacities = capacities.to(torch.long)
             capacities = F.one_hot(capacities, num_classes=self.capacity_range)
-        else:
-            capacities = torch.unflatten(capacities, 1, (-1, self.capacity_range))
 
         size_ratio = capacities[:, 0, :]
-        y_cap = capacities[:, 1, :] 
-        z_cap = capacities[:, 2, :]
-
-        return (feats, size_ratio, y_cap, z_cap)
-
+        q_cap = capacities[:, 1, :]
+        return (feats, size_ratio, q_cap)
 
     def _forward_impl(self, x: Tensor) -> Tensor:
-        feats, size_ratio, y_cap, z_cap = self._split_input(x)
+        feats, size_ratio, q_cap = self._split_input(x)
 
         size_ratio = size_ratio.to(torch.float)
         size_ratio = self.t_embedding(size_ratio)
 
-        y_cap = y_cap.to(torch.float)
-        y_cap = self.y_embedding(y_cap)
+        q_cap = q_cap.to(torch.float)
+        q_cap = self.q_embedding(q_cap)
 
-        z_cap = z_cap.to(torch.float)
-        z_cap = self.z_embedding(z_cap)
-
-        inputs = torch.cat([feats, size_ratio, y_cap, z_cap], dim=-1)
+        inputs = torch.cat([feats, size_ratio, q_cap], dim=-1)
 
         out = self.in_norm(inputs)
         out = self.in_layer(out)

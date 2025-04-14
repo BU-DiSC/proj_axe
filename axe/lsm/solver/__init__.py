@@ -3,19 +3,19 @@ from axe.lsm.types import Policy
 from .classic_solver import ClassicSolver
 from .qlsm_solver import QLSMSolver
 from .klsm_solver import KLSMSolver
-from .yzlsm_solver import YZLSMSolver
+from .fluidlsm_solver import FluidLSMSolver
 
 
-def get_solver(
+def get_solver_from_policy(
     choice: Policy,
-) -> Type[ClassicSolver | QLSMSolver | KLSMSolver | YZLSMSolver]:
+) -> Type[ClassicSolver | QLSMSolver | KLSMSolver | FluidLSMSolver]:
     choices = {
         Policy.Tiering: ClassicSolver,
         Policy.Leveling: ClassicSolver,
         Policy.Classic: ClassicSolver,
-        Policy.QFixed: QLSMSolver,
-        Policy.YZHybrid: YZLSMSolver,
-        Policy.KHybrid: KLSMSolver,
+        Policy.QHybrid: QLSMSolver,
+        Policy.Fluid: FluidLSMSolver,
+        Policy.Kapacity: KLSMSolver,
     }
     solver = choices.get(choice, None)
     if solver is None:

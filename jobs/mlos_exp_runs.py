@@ -59,7 +59,7 @@ class ExperimentMLOS:
         return design
 
     def _create_parameter_space(self, system: System) -> CS.ConfigurationSpace:
-        norm_params = [
+        parameters = [
             CS.UniformFloatHyperparameter(
                 name="bits_per_element",
                 lower=self.bounds.bits_per_elem_range[0],
@@ -79,7 +79,7 @@ class ExperimentMLOS:
                     upper=1,
                 )
             ]
-            parameters = norm_params + classic_params
+            parameters += classic_params
         if self.model_type == Policy.YZHybrid:
             yz_params = [
                 CS.UniformIntegerHyperparameter(
@@ -103,7 +103,7 @@ class ExperimentMLOS:
                 )
                 for i in range(self.bounds.max_considered_levels)
             ]
-            parameters = norm_params + kap_params
+            parameters += kap_params
         parameter_space = CS.ConfigurationSpace(seed=0)
         parameter_space.add(parameters)
 

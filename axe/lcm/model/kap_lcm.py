@@ -1,9 +1,8 @@
 from typing import Callable, Optional, Tuple
 
-from torch import Tensor
-from torch import nn
 import torch
-import torch.nn.functional as F
+from torch import Tensor, nn
+from torch.nn.functional import one_hot
 
 
 class KapEmbedding(nn.Module):
@@ -33,7 +32,7 @@ class KapEmbedding(nn.Module):
         return out
 
 
-class KapModel(nn.Module):
+class KapLCM(nn.Module):
     def __init__(
         self,
         num_feats: int,
@@ -45,6 +44,7 @@ class KapModel(nn.Module):
         max_levels: int = 20,
         decision_dim: int = 64,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
+        disable_one_hot_encoding: bool = False,
     ) -> None:
         super().__init__()
         width = (max_levels + 1) * embedding_size + num_feats - (max_levels + 1)
@@ -73,21 +73,22 @@ class KapModel(nn.Module):
         self.num_feats = num_feats
         self.max_levels = max_levels
         self.decision_dim = decision_dim
+        self.disable_one_hot_encoding = disable_one_hot_encoding
 
         for module in self.modules():
             if isinstance(module, nn.Linear):
-                nn.init.xavier_normal_(module.weight)
+                nn.init.kaiming_normal_(module.weight)
 
     def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         categorical_bound = self.num_feats - (self.max_levels + 1)
         feats = x[:, :categorical_bound]
         capacities = x[:, categorical_bound:]
 
-        if self.training:
-            capacities = capacities.to(torch.long)
-            capacities = F.one_hot(capacities, num_classes=self.capacity_range)
-        else:
+        if self.disable_one_hot_encoding:
             capacities = torch.unflatten(capacities, 1, (-1, self.capacity_range))
+        else:
+            capacities = capacities.to(torch.long)
+            capacities = one_hot(capacities, num_classes=self.capacity_range)
 
         size_ratio = capacities[:, 0, :]
         k_cap = capacities[:, 1:, :]

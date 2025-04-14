@@ -5,10 +5,10 @@ import scipy.optimize as SciOpt
 import torch
 
 from axe.lcm.util import eval_lcm_impl
-from axe.lsm.cost import EndureCost
+from axe.lsm.cost import Cost
 from axe.lsm.types import LSMBounds, LSMDesign, System, Policy
-from axe.ltune.data.generator import LTuneDataGenerator
-from axe.ltune.loss import LearnedCostModelLoss
+from axe.ltuner.data.schema import LTunerDataSchema
+from axe.ltuner.loss import LearnedCostModelLoss
 import axe.lsm.solver as Solver
 
 
@@ -20,7 +20,8 @@ class LTuneEvalUtil:
         design_type: Policy,
     ) -> None:
         self.bounds = LSMBounds()
-        self.gen = LTuneDataGenerator(self.bounds)
+        policy = getattr(Policy, config["lsm"]["policy"])
+        self.gen = LTunerDataSchema(policy, self.bounds)
         self.loss = LearnedCostModelLoss(
             config,
             config["job"]["LTuneTrain"]["loss_fn_path"]
@@ -28,7 +29,7 @@ class LTuneEvalUtil:
         self.max_t = self.bounds.size_ratio_range[1]
         self.min_t = self.bounds.size_ratio_range[0]
         self.model = model
-        self.cf = EndureCost(self.bounds.max_considered_levels)
+        self.cf = Cost(self.bounds.max_considered_levels)
         self.config = config
         self.design_type = design_type
 
