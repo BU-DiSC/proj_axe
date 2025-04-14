@@ -5,14 +5,12 @@ import sys
 import toml
 from typing import Any
 
-from jobs.lcm_train import LCMTrainJob
-from jobs.data_gen import DataGenJob
-from jobs.ltune_train import LTuneTrainJob
-# from jobs.botorch_bo import BayesianPipeline
-# from jobs.mlos_bo import BayesianPipelineMlos
-from jobs.mlos_exp_runs import ExperimentMLOS
+from jobs.create_lcm_data import CreateLCMData
+from jobs.create_ltuner_data import CreateLTunerData
 from jobs.ltune_robust_train import LTuneRobustTrainJob
-
+from jobs.mlos_exp_runs import ExperimentMLOS
+from jobs.train_lcm import TrainLCM
+from jobs.train_ltuner import TrainLTuner
 
 class AxeDriver:
     def __init__(self, config: dict[str, Any]) -> None:
@@ -30,11 +28,10 @@ class AxeDriver:
         self.log.info(f'Staring app {self.config["app"]["name"]}')
 
         jobs = {
-            "DataGen": DataGenJob,
-            "LCMTrain": LCMTrainJob,
-            "LTuneTrain": LTuneTrainJob,
-            # "BayesianPipelineBoTorch": BayesianPipeline,
-            # "BayesianPipelineMLOS": BayesianPipelineMlos,
+            "create_lcm_data": CreateLCMData,
+            "train_lcm": TrainLCM,
+            "create_ltuner_data": CreateLTunerData,
+            "train_ltuner": TrainLTuner,
             "ExperimentMLOS": ExperimentMLOS,
             "LTuneRobustTrain": LTuneRobustTrainJob,
         }
