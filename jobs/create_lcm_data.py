@@ -3,14 +3,14 @@ import argparse
 import logging
 import multiprocessing as mp
 import os
-import toml
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from axe.lsm.types import LSMBounds, Policy
-from axe.lcm.data.schema import LCMDataSchema
-
+import toml
 from tqdm import tqdm
+
+from axe.lcm.data.schema import LCMDataSchema
+from axe.lsm.types import LSMBounds, Policy
 
 
 class CreateLCMData:

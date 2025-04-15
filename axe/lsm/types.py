@@ -17,7 +17,7 @@ class System():
     entry_size: int = 8192
     selectivity: float = 4e-7
     entries_per_page: int = 4
-    num_entries: int = 1_000_000_000
+    num_entries: int = 100_000_000
     mem_budget: float = 10.0
     phi: float = 1.0  # Read/Write asymmetry coefficient
 

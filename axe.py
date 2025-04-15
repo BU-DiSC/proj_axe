@@ -2,14 +2,16 @@
 import logging
 import os
 import sys
-import toml
 from typing import Any
+
+import toml
 
 from jobs.create_lcm_data import CreateLCMData
 from jobs.create_ltuner_data import CreateLTunerData
-# from jobs.mlos_exp_runs import ExperimentMLOS
+from jobs.run_experiments import RunExperiments
 from jobs.train_lcm import TrainLCM
 from jobs.train_ltuner import TrainLTuner
+
 
 class AxeDriver:
     def __init__(self, config: dict[str, Any]) -> None:
@@ -29,7 +31,7 @@ class AxeDriver:
             "train_lcm": TrainLCM,
             "create_ltuner_data": CreateLTunerData,
             "train_ltuner": TrainLTuner,
-            # "ExperimentMLOS": ExperimentMLOS,
+            "run_experiments": RunExperiments,
         }
         jobs_list = self.config["app"]["run"]
         self.log.info(f"Jobs to run: {jobs_list}")

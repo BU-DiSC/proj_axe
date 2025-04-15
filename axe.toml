@@ -20,11 +20,11 @@
 [app]
 name = "AXE"
 run = [
-    "create_lcm_data",
-    "train_lcm",
-    "create_ltuner_data",
-    "train_ltuner"
-    # "ExperimentMLOS",
+    # "create_lcm_data",
+    # "train_lcm",
+    # "create_ltuner_data",
+    # "train_ltuner"
+    "run_experiments",
 ]
 random_seed = 2169
 disable_tqdm = false
@@ -161,48 +161,11 @@ shuffle = true
 num_workers = 4
 
 # -----------------------------------------------------------------------------
-[job.BayesianOptimization]
+[job.run_experiments]
 # -----------------------------------------------------------------------------
-num_iterations = 15
-num_restarts = 2 # TODO set it to 2
-# value of raw_samples determines how many initial random samples are taken from the search space before starting the optimization process
-raw_samples = 3 # TODO set it to 3
-initial_samples = 20
-# for a true KLSM calculation - set num_k_values to the same value as max_levels. This is only consequential for the KLSM model
-# This works in the following way:
-# suppose num_k_values = 4 and max_levels = 20
-# Then every layer till the 4th layer will have custom k values but the (num_k_values + 1) layer to the (max_levels) layer will only
-# have a k value equal to 1
-num_k_values = 4
-
-# This is the q value used in BoTorch Acquisition functions.
-# if it is set to a value above 1 sequential processing will stop in acquisition function and batch processing will start
-# note that for batch processing tensor shape will change and will require modification of code.
-# TODO: Add code to handle batch
-batch_size = 1
-# Acquisition function options
-# [ExpectedImprovement, UpperConfidenceBound, qExpectedImprovement]
-acquisition_function = "ExpectedImprovement"
-beta_value = 0.3
-# determines how many workloads do we want to test using the bayesian pipeline
-multi_jobs_number = 100
-multi_job_file = "design_comparison.csv"
-
-[job.BayesianOptimization.database]
-data_dir = "databases"
-# This will take value 0 and 1 where 1 means write each cost and run details into the MySqlLite database
-# and 0 means run details are not stored in the database
-write_to_db = 1
-# by default the databases directory will be created inside the data director. To change this, you need to change ["io"]["data_dir"]
-db_path = "yz_databases"
-# This must be a .db file for code to function. It will create a sqllite database
-db_name = "yz_db_cost.db"
-
-[job.BayesianOptimization.mlos]
-#values can be Flaml, Smac, Random
-optimizer = "Smac"
-num_runs = 1000
-iteration = 50
+exp_list = [
+    "ExperimentMLOS"
+]
 
 # =============================================================================
 # HEADER LCM
@@ -288,113 +251,3 @@ delta = 10
 
 [loss.MSE]
 reduction = 'mean'
-
-
-# =============================================================================
-# HEADER WORKLOADS
-#     List of representative workloads used for testing suite
-# =============================================================================
-[[workloads]]
-id = 0
-z0 = 0.25
-z1 = 0.25
-q  = 0.25
-w  = 0.25
-
-[[workloads]]
-id = 1
-z0 = 0.97
-z1 = 0.01
-q = 0.01
-w = 0.01
-
-[[workloads]]
-id = 2
-z0 = 0.01
-z1 = 0.97
-q = 0.01
-w = 0.01
-
-[[workloads]]
-id = 3
-z0 = 0.01
-z1 = 0.01
-q = 0.97
-w = 0.01
-
-[[workloads]]
-id = 4
-z0 = 0.01
-z1 = 0.01
-q = 0.01
-w = 0.97
-
-[[workloads]]
-id = 5
-z0 = 0.49
-z1 = 0.49
-q = 0.01
-w = 0.01
-
-[[workloads]]
-id = 6
-z0 = 0.49
-z1 = 0.01
-q = 0.49
-w = 0.01
-
-[[workloads]]
-id = 7
-z0 = 0.49
-z1 = 0.01
-q = 0.01
-w = 0.49
-
-[[workloads]]
-id = 8
-z0 = 0.01
-z1 = 0.49
-q = 0.49
-w = 0.01
-
-[[workloads]]
-id = 9
-z0 = 0.01
-z1 = 0.49
-q = 0.01
-w = 0.49
-
-[[workloads]]
-id = 10
-z0 = 0.01
-z1 = 0.01
-q = 0.49
-w = 0.49
-
-[[workloads]]
-id = 11
-z0 = 0.33
-z1 = 0.33
-q = 0.33
-w = 0.01
-
-[[workloads]]
-id = 12
-z0 = 0.33
-z1 = 0.33
-q = 0.01
-w = 0.33
-
-[[workloads]]
-id = 13
-z0 = 0.33
-z1 = 0.01
-q = 0.33
-w = 0.33
-
-[[workloads]]
-id = 14
-z0 = 0.01
-z1 = 0.33
-q = 0.33
-w = 0.33
