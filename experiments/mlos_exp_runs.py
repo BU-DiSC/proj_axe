@@ -10,7 +10,7 @@ from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 from .infra import AxeResultDB
 
 NUM_ROUNDS = 100
-NUM_TRIALS = 50
+NUM_TRIALS = 100
 
 LOG_ROUND_QUERY = {
     Policy.Classic: """
@@ -57,10 +57,10 @@ class ExperimentMLOS:
     def __init__(self, config: dict) -> None:
         self.log: logging.Logger = logging.getLogger(config["app"]["name"])
         self.bounds: LSMBounds = LSMBounds(**config["lsm"]["bounds"])
-        self.policy = getattr(Policy, config["lsm"]["policy"])
+        self.policy: Policy = getattr(Policy, config["lsm"]["policy"])
         self.cf: Cost = Cost(self.bounds.max_considered_levels)
         self.db = AxeResultDB(config)
-        self.config = config
+        self.config: dict = config
 
     def _create_table_str(self):
         tunings_cols_comm = """
@@ -80,8 +80,7 @@ class ExperimentMLOS:
         elif self.policy == Policy.QHybrid:
             raise NotImplementedError
         else:  # self.policy == Policy.Kapacity:
-            kap_fields = ", ".join([f"kap{i} REAL" for i in range(20)])
-            policy_field = kap_fields
+            policy_field = ", ".join([f"kap{i} INT" for i in range(20)])
         key_string = "FOREIGN KEY (env_id) REFERENCES workloads(env_id)"
         create_tunings_table_query = f"""
             CREATE TABLE IF NOT EXISTS tunings (
@@ -100,13 +99,13 @@ class ExperimentMLOS:
         design: LSMDesign,
         cost: float,
     ):
-        args = (workload_id, trial, round, design.bits_per_elem, design.size_ratio)
+        args = (workload_id, trial, round, design.bits_per_elem, int(design.size_ratio))
         if self.policy == Policy.Classic:
             args += (str(design.policy),)
         elif self.policy == Policy.Fluid:
             args += (int(design.kapacity[0]), int(design.kapacity[1]))
         else:  # self.policy == Policy.Kapacity
-            args += tuple(design.kapacity)
+            args += tuple(int(x) for x in design.kapacity)
         args += (cost,)
         sql_query = LOG_ROUND_QUERY.get(self.policy, None)
         if sql_query is None:
