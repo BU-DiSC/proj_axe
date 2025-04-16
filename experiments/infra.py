@@ -28,9 +28,8 @@ workloads = [
 class AxeResultDB:
     def __init__(self, config: dict) -> None:
         self.log: logging.Logger = logging.getLogger(config["app"]["name"])
-        self.con = sqlite3.connect(
-            os.path.join(config["io"]["data_dir"], config["io"]["database"])
-        )
+        self.db_path = os.path.join(config["io"]["data_dir"], config["io"]["database"])
+        self.con = sqlite3.connect(self.db_path)
         self.build_environments_table()
 
     def build_environments_table(self):

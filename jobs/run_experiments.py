@@ -4,7 +4,9 @@ import logging
 
 import toml
 
+from experiments.evaluate_ltuner import ExpLTunerEvaluate
 from experiments.mlos_exp_runs import ExperimentMLOS
+from experiments.evaluate_lcm import ExpLCMEvaluate
 
 
 class RunExperiments:
@@ -16,7 +18,11 @@ class RunExperiments:
         self.cfg = cfg
 
     def run(self) -> None:
-        experiments = {"ExperimentMLOS": ExperimentMLOS}
+        experiments = {
+            "ExperimentMLOS": ExperimentMLOS,
+            "ExpLCMEvaluate": ExpLCMEvaluate,
+            "ExpLTunerEvaluate": ExpLTunerEvaluate
+        }
         self.log.info(f"Jobs to run: {self.exp_list}")
         for exp_name in self.exp_list:
             experiment = experiments.get(exp_name, None)

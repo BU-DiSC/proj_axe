@@ -1,8 +1,8 @@
-import random
+from typing import Any
 
 import axe.lsm.data_generator as DataGen
 from axe.lsm.cost import Cost
-from axe.lsm.types import LSMBounds, Policy, System, Workload
+from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 
 kSYSTEM_HEADER = ["entry_p_page", "selec", "entry_size", "mem_budget", "num_elem"]
 kWORKLOAD_HEADER = ["z0", "z1", "q", "w"]
@@ -64,3 +64,24 @@ class LTunerDataSchema:
             line[key] = val
 
         return line
+
+    @classmethod
+    def design_to_dict(cls, design: LSMDesign) -> dict[str, Any]:
+        rval: dict[str, Any] = {
+            "bits_per_elem": design.bits_per_elem,
+            "size_ratio": design.size_ratio,
+        }
+        if (design.policy == Policy.Tiering) or (design.policy == Policy.Leveling):
+            rval["policy"] = str(design.policy)
+        elif design.policy == Policy.QHybrid:
+            rval["q_val"] = design.kapacity[0]
+        elif design.policy == Policy.Fluid:
+            rval["y_val"] = design.kapacity[0]
+            rval["z_val"] = design.kapacity[1]
+        elif design.policy == Policy.Kapacity:
+            for idx, kap in enumerate(design.kapacity):
+                rval[f"kap{idx}"] = kap
+        else:
+            raise NotImplementedError
+
+        return rval

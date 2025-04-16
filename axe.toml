@@ -148,8 +148,20 @@ num_workers = 4
 [job.run_experiments]
 # -----------------------------------------------------------------------------
 exp_list = [
-    "ExperimentMLOS"
+    # "ExperimentMLOS",
+    # "ExpLCMEvaluate"
+    "ExpLTunerEvaluate"
 ]
+
+# =============================================================================
+# HEADER EXPERIMENTS
+#   Configuration for experiments
+# =============================================================================
+[experiments]
+lcm_path = "data/lcm/models/kaplsm_250514_1230"
+lcm_model = "best_model.model"
+ltune_path = "data/ltuner/models/kaplsm_250514_1230"
+ltune_model = "best_model.model"
 
 # =============================================================================
 # HEADER LCM

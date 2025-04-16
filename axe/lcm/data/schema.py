@@ -33,7 +33,7 @@ class LCMDataSchema:
         elif self.policy == Policy.Fluid:
             return base_feat_cols + ["bits_per_elem", "size_ratio", "Y", "Z"]
         elif self.policy == Policy.Kapacity:
-            cols = [f"K_{i}" for i in range(self.bounds.max_considered_levels)]
+            cols = [f"kap{i}" for i in range(self.bounds.max_considered_levels)]
             return base_feat_cols + ["bits_per_elem", "size_ratio"] + cols
         else:
             raise NotImplementedError
@@ -44,11 +44,11 @@ class LCMDataSchema:
         elif self.policy == Policy.Classic:
             return ["policy", "size_ratio"]
         elif self.policy == Policy.QHybrid:
-            return ["size_ratio", "Q"]
+            return ["size_ratio", "q_val"]
         elif self.policy == Policy.Fluid:
-            return ["size_ratio", "Y", "Z"]
+            return ["size_ratio", "y_val", "z_val"]
         elif self.policy == Policy.Kapacity:
-            cols = [f"K_{i}" for i in range(self.bounds.max_considered_levels)]
+            cols = [f"kap{i}" for i in range(self.bounds.max_considered_levels)]
             return ["size_ratio"] + cols
         else:
             raise NotImplementedError
@@ -57,16 +57,16 @@ class LCMDataSchema:
         min_size_ratio, _ = self.bounds.size_ratio_range
         table = table.with_columns(pl.col("size_ratio").sub(min_size_ratio))
         if self.policy == Policy.QHybrid:
-            table = table.with_columns(pl.col("Q").sub(min_size_ratio - 1))
+            table = table.with_columns(pl.col("q_val").sub(min_size_ratio - 1))
         elif self.policy == Policy.Fluid:
             table = table.with_columns(
-                pl.col("Y").sub(min_size_ratio - 1),
-                pl.col("Z").sub(min_size_ratio - 1),
+                pl.col("y_val").sub(min_size_ratio - 1),
+                pl.col("z_val").sub(min_size_ratio - 1),
             )
         elif self.policy == Policy.Kapacity:
             table = table.with_columns(
                 [
-                    pl.col(f"K_{i}").sub(min_size_ratio - 1).clip(0)
+                    pl.col(f"kap{i}").sub(min_size_ratio - 1).clip(0)
                     for i in range(self.bounds.max_considered_levels)
                 ]
             )
@@ -87,11 +87,11 @@ class LCMDataSchema:
             + ["bits_per_elem", "size_ratio", "policy"]
         )
         if self.policy == Policy.QHybrid:
-            column_names += ["Q"]
+            column_names += ["q_val"]
         elif self.policy == Policy.Fluid:
-            column_names += ["Y", "Z"]
+            column_names += ["y_val", "z_val"]
         elif self.policy == Policy.Kapacity:
-            column_names += [f"K_{i}" for i in range(self.bounds.max_considered_levels)]
+            column_names += [f"kap{i}" for i in range(self.bounds.max_considered_levels)]
 
         return column_names
 
