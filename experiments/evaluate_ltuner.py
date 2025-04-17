@@ -125,13 +125,18 @@ class LTunerEvaluator:
         return table
 
     def row_to_objs(self, row: dict):
-        workload = Workload(row["z0"], row["z1"], row["q"], row["w"])
+        workload = Workload(
+            row["empty_reads"],
+            row["non_empty_reads"],
+            row["range_queries"],
+            row["writes"],
+        )
         system = System(
-            entries_per_page=row["entry_p_page"],
-            selectivity=row["selec"],
+            entries_per_page=row["entries_per_page"],
+            selectivity=row["selectivity"],
             entry_size=row["entry_size"],
-            mem_budget=row["mem_budget"],
-            num_entries=row["num_elem"],
+            mem_budget=row["bits_per_elem_max"],
+            num_entries=row["num_entries"],
         )
         return workload, system
 

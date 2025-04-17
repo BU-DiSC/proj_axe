@@ -34,7 +34,9 @@ class ExpLCMEvaluate:
 
 
 class LCMEvaluator:
-    def __init__(self, config: dict, path: str, model: str = "best_model.model") -> None:
+    def __init__(
+        self, config: dict, path: str, model: str = "best_model.model"
+    ) -> None:
         self.log: logging.Logger = logging.getLogger(config["app"]["name"])
         seed = config["app"]["random_seed"]
         cfg = toml.load(os.path.join(path, "axe.toml"))
