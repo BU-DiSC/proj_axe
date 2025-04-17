@@ -2,6 +2,7 @@ import argparse
 import logging
 import subprocess
 
+import pandas as pd
 import polars as pl
 import toml
 
@@ -35,7 +36,7 @@ class ExpMonkeyEvaluation:
             entries_per_page=row["entries_per_page"],
             selectivity=row["selectivity"],
             entry_size=row["entry_size"],
-            mem_budget=row["bits_per_elem_max"],
+            mem_budget=row["mem_budget"],
             num_entries=row["num_entries"],
         )
         return workload, system
@@ -66,6 +67,8 @@ class ExpMonkeyEvaluation:
         bits_per_elem = float(proc_out[H_IDX])
         size_ratio = int(proc_out[T_IDX])
         policy = Policy.Leveling if proc_out[P_IDX] == "l" else Policy.Tiering
+        if bits_per_elem >= system.mem_budget:
+            bits_per_elem = system.mem_budget - 0.1
 
         return LSMDesign(
             bits_per_elem=bits_per_elem,
@@ -74,7 +77,22 @@ class ExpMonkeyEvaluation:
             kapacity=(),
         )
 
-    def run(self):
+    def write_table(self, input_table: pl.DataFrame):
+        # okay because apparently polars does not support writing out to sqlite3, we
+        # will do a polars -> pandas -> write sqlite3 line
+        # This should be fine as polars already uses pandas underneath the hood to write
+        # to sqlite with sqlalchemy
+        table: pd.DataFrame = input_table.to_pandas()
+        try:
+            table.to_sql(
+                name="monkey_evaluation", con=self.db.con, if_exists="fail", index=False
+            )
+        except ValueError as err:
+            self.log.warn(f"Error writing results: {err}")
+            self.log.warn("Falling back to writing csv: 'monkey_eval.csv'")
+            table.to_csv("monkey_eval.csv", index=False)
+
+    def run(self, save=True):
         env_table: pl.DataFrame = self.db.get_env_table()
         table = []
         for env in env_table.to_dicts():
@@ -85,6 +103,8 @@ class ExpMonkeyEvaluation:
             row["cost"] = self.cost_fn.calc_cost(design, system, workload)
             table.append(row)
         table = pl.concat((env_table, pl.DataFrame(table)), how="horizontal")
+        if save:
+            self.write_table(table)
 
         return table
 
@@ -95,9 +115,9 @@ def main():
     parser.add_argument("--monkey_bin", type=str, help="path to monkey bin")
     args = parser.parse_args()
     config = toml.load(args.config)
-    logging.basicConfig(**config["log"])
-    log: logging.Logger = logging.getLogger(config["app"]["name"])
-    log.info(f"Log level: {logging.getLevelName(log.getEffectiveLevel())}")
+    # logging.basicConfig(**config["log"])
+    # log: logging.Logger = logging.getLogger(config["app"]["name"])
+    # log.info(f"Log level: {logging.getLevelName(log.getEffectiveLevel())}")
 
     ExpMonkeyEvaluation(config, monkey_bin_path=args.monkey_bin).run()
 

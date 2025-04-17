@@ -35,7 +35,7 @@ class AxeResultDB:
     def build_environments_table(self):
         cursor = self.con.cursor()
         cursor.execute(
-            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='envirnoments'"
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='environments'"
         )
         result = cursor.fetchone()[0]
         if result:
@@ -54,7 +54,7 @@ class AxeResultDB:
                 selectivity REAL,
                 entries_per_page INT,
                 num_entries INT,
-                bits_per_elem_max REAL,
+                mem_budget REAL,
                 read_write_asym FLOAT
             );
             """
@@ -69,7 +69,7 @@ class AxeResultDB:
             selectivity,
             entries_per_page,
             num_entries,
-            bits_per_elem_max,
+            mem_budget,
             read_write_asym
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """

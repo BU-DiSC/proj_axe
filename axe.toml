@@ -44,7 +44,7 @@ level = "DEBUG"
 # =============================================================================
 [io]
 data_dir = "data"
-database = "axe_results.db"
+database = "snapshot.db"
 
 # =============================================================================
 # HEADER LSM
@@ -149,8 +149,8 @@ num_workers = 4
 # -----------------------------------------------------------------------------
 exp_list = [
     # "ExperimentMLOS",
-    # "ExpLCMEvaluate"
-    "ExpLTunerEvaluate"
+    "ExpLCMEvaluate",
+    "ExpLTunerEvaluate",
 ]
 
 # =============================================================================
@@ -160,8 +160,8 @@ exp_list = [
 [experiments]
 lcm_path = "data/lcm/models/kaplsm_250514_1230"
 lcm_model = "best_model.model"
-ltune_path = "data/ltuner/models/kaplsm_250514_1230"
-ltune_model = "best_model.model"
+ltuner_path = "data/ltuner/models/kaplsm_250514_1230"
+ltuner_model = "best_model.model"
 
 # =============================================================================
 # HEADER LCM

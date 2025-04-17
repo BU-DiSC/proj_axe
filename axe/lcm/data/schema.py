@@ -4,8 +4,14 @@ import axe.lsm.data_generator as DataGen
 from axe.lsm.cost import Cost
 from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 
-kSYSTEM_HEADER = ["entry_p_page", "selec", "entry_size", "mem_budget", "num_elem"]
-kWORKLOAD_HEADER = ["z0", "z1", "q", "w"]
+kSYSTEM_HEADER = [
+    "entries_per_page",
+    "selectivity",
+    "entry_size",
+    "mem_budget",
+    "num_entries",
+]
+kWORKLOAD_HEADER = ["empty_reads", "non_empty_reads", "range_queries", "writes"]
 kCOST_HEADER = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 
 
@@ -91,7 +97,9 @@ class LCMDataSchema:
         elif self.policy == Policy.Fluid:
             column_names += ["y_val", "z_val"]
         elif self.policy == Policy.Kapacity:
-            column_names += [f"kap{i}" for i in range(self.bounds.max_considered_levels)]
+            column_names += [
+                f"kap{i}" for i in range(self.bounds.max_considered_levels)
+            ]
 
         return column_names
 

@@ -28,7 +28,12 @@ class ExpLCMEvaluate:
         # This should be fine as polars already uses pandas underneath the hood to write
         # to sqlite with sqlalchemy
         table = table.to_pandas()
-        table.to_sql(name="lcm_evaluation", con=self.db.con, if_exists="replace")
+        try:
+            table.to_sql(name="lcm_evaluation", con=self.db.con, if_exists="fail")
+        except ValueError as err:
+            print(f"Error writing table: {err}")
+            print("Fall back to write csv to 'error_lcm_eval_backup.csv'")
+            table.to_csv('error_lcm_eval_backup.csv')
 
         return
 

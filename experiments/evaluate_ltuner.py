@@ -31,11 +31,22 @@ class ExpLTunerEvaluate:
         # to sqlite with sqlalchemy
         env_table = self.evaluator.evaluate(db.get_env_table())
         env_table = env_table.to_pandas()
-        env_table.to_sql(name="ltune_eval_rep", con=db.con, if_exists="replace")
+        try:
+            self.log.info(f"Writing table ltune_eval_rep to {db.db_path}")
+            env_table.to_sql(name="ltune_eval_rep", con=db.con, if_exists="fail")
+        except ValueError as err:
+            print(f"Error writing table: {err}")
+            print("Fall back to write csv to 'error_ltune_eval_pred.csv'")
+            env_table.to_csv("error_ltune_eval_pred.csv")
 
         rand_table = self.evaluator.evaluate(self.evaluator.generate_test_data())
         rand_table = rand_table.to_pandas()
-        rand_table.to_sql(name="ltune_eval_rand", con=db.con, if_exists="replace")
+        try:
+            rand_table.to_sql(name="ltune_eval_rand", con=db.con, if_exists="fail")
+        except ValueError as err:
+            print(f"Error writing table: {err}")
+            print("Fall back to write csv to 'error_ltune_eval_rand.csv'")
+            env_table.to_csv("error_ltune_eval_rand.csv")
 
         return
 
@@ -118,7 +129,7 @@ class LTunerEvaluator:
         self.log.info(f"Generating test data: size={num_samples}")
         table = [
             self.schema.sample_row_dict()
-            for _ in tqdm(range(num_samples), dynamic_ncols=True)
+            for _ in tqdm(range(num_samples), ncols=80)
         ]
         table = pl.DataFrame(table)
 
@@ -135,7 +146,7 @@ class LTunerEvaluator:
             entries_per_page=row["entries_per_page"],
             selectivity=row["selectivity"],
             entry_size=row["entry_size"],
-            mem_budget=row["bits_per_elem_max"],
+            mem_budget=row["mem_budget"],
             num_entries=row["num_entries"],
         )
         return workload, system
@@ -151,7 +162,7 @@ class LTunerEvaluator:
         for feat, _ in tqdm(  # pyright: ignore
             input_dataset,  # pyright: ignore
             desc="Learned Tuner",
-            dynamic_ncols=True,
+            ncols=80,
         ):
             out = self.model(feat.unsqueeze(0))
             design = self.convert_ltune_out_to_design(out)
@@ -167,7 +178,7 @@ class LTunerEvaluator:
         for row, ltune_design in tqdm(
             zip(table.to_dicts(), ltune_designs),
             desc="Solver Tuner",
-            dynamic_ncols=True,
+            ncols=80,
         ):
             workload, system = self.row_to_objs(row)
             row = LTunerDataSchema.design_to_dict(ltune_design)

@@ -14,7 +14,7 @@ NUM_TRIALS = 100
 
 LOG_ROUND_QUERY = {
     Policy.Classic: """
-    INSERT INTO tunings (
+    INSERT INTO mlos_tunings (
         env_id,
         trial,
         round,
@@ -25,7 +25,7 @@ LOG_ROUND_QUERY = {
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
     """,
     Policy.Fluid: """
-    INSERT INTO tunings (
+    INSERT INTO mlos_tunings (
         env_id,
         trial,
         round,
@@ -36,7 +36,7 @@ LOG_ROUND_QUERY = {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """,
     Policy.Kapacity: """
-    INSERT INTO tunings (
+    INSERT INTO mlos_tunings (
         env_id,
         trial,
         round,
@@ -83,7 +83,7 @@ class ExperimentMLOS:
             policy_field = ", ".join([f"kap{i} INT" for i in range(20)])
         key_string = "FOREIGN KEY (env_id) REFERENCES workloads(env_id)"
         create_tunings_table_query = f"""
-            CREATE TABLE IF NOT EXISTS tunings (
+            CREATE TABLE IF NOT EXISTS mlos_tunings (
                 {tunings_cols_comm}, {policy_field}, 
                 {key_string}
             );
@@ -229,6 +229,7 @@ class ExperimentMLOS:
                 selectivity=env["selectivity"],
                 entries_per_page=env["entries_per_page"],
                 num_entries=env["num_entries"],
+                mem_budget=env["mem_budget"],
                 phi=env["read_write_asym"],
             )
             self.log.info(f"Workload: {workload}")

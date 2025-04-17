@@ -4,8 +4,14 @@ import axe.lsm.data_generator as DataGen
 from axe.lsm.cost import Cost
 from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 
-kSYSTEM_HEADER = ["entry_p_page", "selec", "entry_size", "mem_budget", "num_elem"]
-kWORKLOAD_HEADER = ["z0", "z1", "q", "w"]
+kSYSTEM_HEADER = [
+    "entries_per_page",
+    "selectivity",
+    "entry_size",
+    "mem_budget",
+    "num_entries",
+]
+kWORKLOAD_HEADER = ["empty_reads", "non_empty_reads", "range_queries", "writes"]
 
 
 class LTunerDataSchema:
