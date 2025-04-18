@@ -15,12 +15,15 @@ from experiments.infra import AxeResultDB
 
 class ExpLCMEvaluate:
     def __init__(self, config: dict) -> None:
+        self.log: logging.Logger = logging.getLogger(config["app"]["name"])
         path = config["experiments"]["lcm_path"]
         model = config["experiments"]["lcm_model"]
         self.evaluator = LCMEvaluator(config, path=path, model=model)
+        self.model_path = path
         self.config = config
 
     def run(self):
+        self.log.info(f"Running LCM Evaluation: {self.model_path}")
         table = self.evaluator.evaluate()
         self.db = AxeResultDB(self.config)
         # okay because apparently polars does not support writing out to sqlite3, we
@@ -29,11 +32,13 @@ class ExpLCMEvaluate:
         # to sqlite with sqlalchemy
         table = table.to_pandas()
         try:
-            table.to_sql(name="lcm_evaluation", con=self.db.con, if_exists="fail")
+            table.to_sql(
+                name="lcm_evaluation", con=self.db.con, if_exists="fail", index=False
+            )
         except ValueError as err:
-            print(f"Error writing table: {err}")
-            print("Fall back to write csv to 'error_lcm_eval_backup.csv'")
-            table.to_csv('error_lcm_eval_backup.csv')
+            self.log.warning(f"Error writing table: {err}")
+            self.log.warning("Fall back to write csv to 'error_lcm_eval_backup.csv'")
+            table.to_csv("error_lcm_eval_backup.csv")
 
         return
 
@@ -66,9 +71,10 @@ class LCMEvaluator:
         return self._load_status
 
     def generate_test_data(self, num_samples: int = 10000) -> pl.DataFrame:
-        self.log.info(f"Generating test data: size={num_samples}")
+        self.log.info(f"Generating test data for LCM: size={num_samples}")
         table = [
-            self.schema.sample_row_dict() for _ in tqdm(range(num_samples), ncols=80)
+            self.schema.sample_row_dict()
+            for _ in tqdm(range(num_samples), ncols=80, desc="Test Data")
         ]
         table = pl.DataFrame(table)
 
@@ -84,8 +90,8 @@ class LCMEvaluator:
             dtype=pl.Float32,
         )
         df = []
-        self.log.info("Running model over test set")
-        for feat, label in tqdm(dataset, ncols=80):  # pyright: ignore
+        self.log.info("Running LCM over test set")
+        for feat, label in tqdm(dataset, ncols=80, desc="Eval"):  # pyright: ignore
             pred = self.model(feat.unsqueeze(0))
             df.append({"cost_acm": label.sum().item(), "cost_lcm": pred.sum().item()})
         df = pl.concat([test_data, pl.DataFrame(df)], how="horizontal")

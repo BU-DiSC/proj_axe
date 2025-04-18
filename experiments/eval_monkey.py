@@ -88,8 +88,8 @@ class ExpMonkeyEvaluation:
                 name="monkey_evaluation", con=self.db.con, if_exists="fail", index=False
             )
         except ValueError as err:
-            self.log.warn(f"Error writing results: {err}")
-            self.log.warn("Falling back to writing csv: 'monkey_eval.csv'")
+            self.log.warning(f"Error writing results: {err}")
+            self.log.warning("Falling back to writing csv: 'monkey_eval.csv'")
             table.to_csv("monkey_eval.csv", index=False)
 
     def run(self, save=True):
@@ -115,9 +115,11 @@ def main():
     parser.add_argument("--monkey_bin", type=str, help="path to monkey bin")
     args = parser.parse_args()
     config = toml.load(args.config)
-    # logging.basicConfig(**config["log"])
-    # log: logging.Logger = logging.getLogger(config["app"]["name"])
-    # log.info(f"Log level: {logging.getLevelName(log.getEffectiveLevel())}")
+    logging.basicConfig(**config["log"])
+    log: logging.Logger = logging.getLogger(config["app"]["name"])
+    log.info(f"Log level: {logging.getLevelName(log.getEffectiveLevel())}")
+    numba_logger = logging.getLogger("numba")
+    numba_logger.setLevel(logging.WARNING)
 
     ExpMonkeyEvaluation(config, monkey_bin_path=args.monkey_bin).run()
 

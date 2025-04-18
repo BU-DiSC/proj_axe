@@ -21,9 +21,11 @@ class ExpLTunerEvaluate:
         path = config["experiments"]["ltuner_path"]
         model = config["experiments"]["ltuner_model"]
         self.evaluator = LTunerEvaluator(config, model_path=path, model_name=model)
+        self.model_path = path
         self.config = config
 
     def run(self):
+        self.log.info(f"Running LTuner Evaluation: {self.model_path}")
         db = AxeResultDB(self.config)
         # okay because apparently polars does not support writing out to sqlite3, we
         # will do a polars -> pandas -> write sqlite3 line
@@ -33,19 +35,23 @@ class ExpLTunerEvaluate:
         env_table = env_table.to_pandas()
         try:
             self.log.info(f"Writing table ltune_eval_rep to {db.db_path}")
-            env_table.to_sql(name="ltune_eval_rep", con=db.con, if_exists="fail")
+            env_table.to_sql(
+                name="ltune_eval_rep", con=db.con, if_exists="fail", index=False
+            )
         except ValueError as err:
-            print(f"Error writing table: {err}")
-            print("Fall back to write csv to 'error_ltune_eval_pred.csv'")
+            self.log.warning(f"Error writing table: {err}")
+            self.log.warning("Fall back to write csv to 'error_ltune_eval_pred.csv'")
             env_table.to_csv("error_ltune_eval_pred.csv")
 
         rand_table = self.evaluator.evaluate(self.evaluator.generate_test_data())
         rand_table = rand_table.to_pandas()
         try:
-            rand_table.to_sql(name="ltune_eval_rand", con=db.con, if_exists="fail")
+            rand_table.to_sql(
+                name="ltune_eval_rand", con=db.con, if_exists="fail", index=False
+            )
         except ValueError as err:
-            print(f"Error writing table: {err}")
-            print("Fall back to write csv to 'error_ltune_eval_rand.csv'")
+            self.log.warning(f"Error writing table: {err}")
+            self.log.warning("Fall back to write csv to 'error_ltune_eval_rand.csv'")
             env_table.to_csv("error_ltune_eval_rand.csv")
 
         return
@@ -129,7 +135,7 @@ class LTunerEvaluator:
         self.log.info(f"Generating test data: size={num_samples}")
         table = [
             self.schema.sample_row_dict()
-            for _ in tqdm(range(num_samples), ncols=80)
+            for _ in tqdm(range(num_samples), ncols=80, desc="Test Data")
         ]
         table = pl.DataFrame(table)
 
@@ -158,10 +164,11 @@ class LTunerEvaluator:
             label=self.schema.label_cols(),
             dtype=pl.Float32,
         )
+        self.log.info("Querying AXE for designs")
         ltune_designs = []
         for feat, _ in tqdm(  # pyright: ignore
             input_dataset,  # pyright: ignore
-            desc="Learned Tuner",
+            desc="Designs",
             ncols=80,
         ):
             out = self.model(feat.unsqueeze(0))
@@ -172,12 +179,12 @@ class LTunerEvaluator:
 
     def evaluate(self, table: pl.DataFrame):
         ltune_designs: list[LSMDesign] = self.get_ltune_designs(table)
-
         ltuner_table = []
         solver_table = []
+        self.log.info("Evaluating all designs")
         for row, ltune_design in tqdm(
-            zip(table.to_dicts(), ltune_designs),
-            desc="Solver Tuner",
+            list(zip(table.to_dicts(), ltune_designs)),  # convert to list for tqdm bar
+            desc="Eval",
             ncols=80,
         ):
             workload, system = self.row_to_objs(row)
@@ -187,7 +194,7 @@ class LTunerEvaluator:
 
             design, _ = self.solver.get_nominal_design(system=system, workload=workload)
             row = LTunerDataSchema.design_to_dict(design)
-            row["cost"] = self.cost_fn.calc_cost(ltune_design, system, workload)
+            row["cost"] = self.cost_fn.calc_cost(design, system, workload)
             solver_table.append(row)
         ltuner_table = pl.concat((table, pl.DataFrame(ltuner_table)), how="horizontal")
         solver_table = pl.concat((table, pl.DataFrame(solver_table)), how="horizontal")
