@@ -162,7 +162,7 @@ class TrainLTuner:
         torch.save(save_dict, os.path.join(self.jcfg["save_dir"], fname))
 
     def run(self):
-        self.log.info("[Job] Training LCM")
+        self.log.info("[Job] Training LTuner")
         self._make_save_dir()
 
         loss_file = os.path.join(self.jcfg["save_dir"], "losses.csv")

@@ -63,7 +63,7 @@ class CreateLTunerData:
         return idx
 
     def run(self) -> None:
-        self.log.info("[Job] Creating LCM Data")
+        self.log.info("[Job] Creating LTuner Data")
         os.makedirs(self.output_dir, exist_ok=True)
         self.log.info(f"Writing all files to {self.output_dir}")
 

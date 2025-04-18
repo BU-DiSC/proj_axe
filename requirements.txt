@@ -5,6 +5,7 @@ mlos-core
 mlos-core[smac]
 numba
 numpy
+polars
 pandas
 pandas-stubs
 pyarrow
