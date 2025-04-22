@@ -166,9 +166,12 @@ class TrainLTuner:
         self._make_save_dir()
 
         loss_file = os.path.join(self.jcfg["save_dir"], "losses.csv")
+        init_loss = self.validate_loop()
         with open(loss_file, "w") as fid:
             loss_csv_write = csv.writer(fid)
             loss_csv_write.writerow(["epoch", "train_loss", "test_loss"])
+            loss_csv_write.writerow([0, init_loss, init_loss]) 
+        self.log.info(f"Initial loss: {init_loss}")
 
         max_epochs = self.jcfg["max_epochs"]
         loss_min = self.validate_loop()
