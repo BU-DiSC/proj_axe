@@ -40,8 +40,8 @@ class TrainLTuner:
         self.scheduler = self._build_scheduler(self.optimizer)
         torch.set_float32_matmul_precision("high")
         self.training_data, self.validate_data = self._build_data()
-        self.train_kwargs = {"temp": 10, "hard": False}
-        self.validate_kwargs = {"temp": 0.01, "hard": True}
+        self.train_kwargs = cfg["ltuner"]["train_kwargs"]
+        self.validate_kwargs = cfg["ltuner"]["validate_kwargs"]
 
     def _build_loss_fn(self) -> torch.nn.Module:
         loss = LearnedCostModelLoss(self.cfg, self.jcfg["loss_fn_path"]).to(self.device)
@@ -103,7 +103,7 @@ class TrainLTuner:
         with open(os.path.join(self.jcfg["save_dir"], "axe.toml"), "w") as fid:
             toml.dump(self.cfg, fid)
 
-    def temp_step(self, decay_rate: float = 0.95, floor: float = 1):
+    def temp_step(self, decay_rate: float = 0.95, floor: float = 1e-3):
         self.train_kwargs["temp"] *= decay_rate
         if self.train_kwargs["temp"] < floor:
             self.train_kwargs["temp"] = floor
@@ -166,15 +166,14 @@ class TrainLTuner:
         self._make_save_dir()
 
         loss_file = os.path.join(self.jcfg["save_dir"], "losses.csv")
-        init_loss = self.validate_loop()
+        loss_min = self.validate_loop()
         with open(loss_file, "w") as fid:
             loss_csv_write = csv.writer(fid)
             loss_csv_write.writerow(["epoch", "train_loss", "test_loss"])
-            loss_csv_write.writerow([0, init_loss, init_loss]) 
-        self.log.info(f"Initial loss: {init_loss}")
+            loss_csv_write.writerow([0, loss_min, loss_min]) 
+        self.log.info(f"Initial loss: {loss_min}")
 
         max_epochs = self.jcfg["max_epochs"]
-        loss_min = self.validate_loop()
         for epoch in range(max_epochs):
             self.log.info(f"Epoch: [{epoch+1}/{max_epochs}]")
             self.log.debug(f"{self.train_kwargs=}")

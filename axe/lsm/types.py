@@ -17,7 +17,7 @@ class System():
     entry_size: int = 8192
     selectivity: float = 4e-7
     entries_per_page: int = 4
-    num_entries: int = 100_000_000
+    num_entries: int = 1_000_000_000
     mem_budget: float = 10.0
     phi: float = 1.0  # Read/Write asymmetry coefficient
 
@@ -47,7 +47,7 @@ class LSMBounds:
     entry_sizes: Tuple = (1024, 2048, 4096, 8192)
     memory_budget_range: Tuple[float, float] = (5.0, 20.0)
     selectivity_range: Tuple[float, float] = (1e-7, 1e-9)
-    elements_range: Tuple[int, int] = (100000000, 1000000000)
+    elements_range: Tuple[int, int] = (100000000, 5000000000)
 
 
 @dataclass(frozen=True)

@@ -34,7 +34,7 @@ class CreateLCMData:
         fpath = os.path.join(self.output_dir, fname)
 
         if os.path.exists(fpath) and (not self.overwrite_if_exists):
-            self.log.info(f"{fpath} exists, exiting.")
+            self.log.debug(f"{fpath} exists, exiting.")
             return -1
 
         pbar = tqdm(

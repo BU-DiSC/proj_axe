@@ -36,7 +36,7 @@ class CreateLTunerData:
         fpath = os.path.join(self.output_dir, fname)
 
         if os.path.exists(fpath) and (not self.overwrite_if_exists):
-            self.log.info(f"{fpath} exists, exiting.")
+            self.log.debug(f"{fpath} exists, exiting.")
             return -1
 
         pbar = tqdm(
@@ -72,7 +72,7 @@ class CreateLTunerData:
         if threads == -1:
             threads = mp.cpu_count()
         if threads > self.num_files:
-            self.log.info("Num workers > num files, scaling down")
+            self.log.debug("Num workers > num files, scaling down")
             threads = self.num_files
         self.log.debug(f"Using {threads=}")
 

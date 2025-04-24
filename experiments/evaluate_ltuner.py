@@ -5,7 +5,7 @@ import polars as pl
 import toml
 import torch
 from torch import Tensor
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from axe.lsm.cost import Cost
 from axe.lsm.solver import get_solver_from_policy
@@ -36,7 +36,10 @@ class ExpLTunerEvaluate:
         try:
             self.log.info(f"Writing table ltune_eval_rep to {db.db_path}")
             env_table.to_sql(
-                name="ltune_eval_rep", con=db.con, if_exists="fail", index=False
+                name="ltune_eval_rep",
+                con=db.con,
+                if_exists=self.config["experiments"]["if_table_exists"],
+                index=False,
             )
         except ValueError as err:
             self.log.warning(f"Error writing table: {err}")
@@ -47,7 +50,10 @@ class ExpLTunerEvaluate:
         rand_table = rand_table.to_pandas()
         try:
             rand_table.to_sql(
-                name="ltune_eval_rand", con=db.con, if_exists="fail", index=False
+                name="ltune_eval_rand",
+                con=db.con,
+                if_exists=self.config["experiments"]["if_table_exists"],
+                index=False,
             )
         except ValueError as err:
             self.log.warning(f"Error writing table: {err}")

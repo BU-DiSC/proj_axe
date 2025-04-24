@@ -42,6 +42,10 @@ class AxeResultDB:
             self.log.info("Environments table already created, skipping")
             return
 
+        # TODO: Honestly Andy should probably just change the table to include both the
+        # representative benchmark suite (workloads array above) and a handful of
+        # randomly generated ones into one table. Add a simple TEXT tag "bench" and
+        # "rand" to distinguish between the two. Should make experiments a little easier
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS environments (

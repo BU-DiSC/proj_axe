@@ -33,7 +33,10 @@ class ExpLCMEvaluate:
         table = table.to_pandas()
         try:
             table.to_sql(
-                name="lcm_evaluation", con=self.db.con, if_exists="fail", index=False
+                name="lcm_evaluation",
+                con=self.db.con,
+                if_exists=self.config["experiments"]["if_table_exists"],
+                index=False,
             )
         except ValueError as err:
             self.log.warning(f"Error writing table: {err}")
