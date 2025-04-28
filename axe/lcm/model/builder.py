@@ -1,16 +1,15 @@
-from typing import Tuple
-
 from torch import nn
 import torch
 
-from axe.lcm.data.input_features import kINPUT_FEATS_DICT
-from axe.lcm.model import KapModel, QModel, ClassicModel, YZModel
+from axe.lcm.data.schema import LCMDataSchema
+from axe.lcm.model import KapLCM, QHybridLCM, ClassicLCM, FluidLCM
 from axe.lsm.types import Policy
 
 
 class LearnedCostModelBuilder:
     def __init__(
         self,
+        schema: LCMDataSchema,
         hidden_length: int = 1,
         hidden_width: int = 64,
         embedding_size: int = 8,
@@ -18,8 +17,6 @@ class LearnedCostModelBuilder:
         policy_embedding_size: int = 2,  # only used for classic model
         decision_dim: int = 64,
         dropout: float = 0.0,
-        size_ratio_range: Tuple[int, int] = (2, 31),
-        max_levels: int = 16,
     ) -> None:
         self.embedding_size = embedding_size
         self.policy_embedding_size = policy_embedding_size
@@ -27,34 +24,29 @@ class LearnedCostModelBuilder:
         self.hidden_width = hidden_width
         self.decision_dim = decision_dim
         self.dropout = dropout
-        self.max_levels = max_levels
-        self.size_ratio_min, self.size_ratio_max = size_ratio_range
-        self.capacity_range = self.size_ratio_max - self.size_ratio_min
+        self.max_levels = schema.bounds.max_considered_levels
+        self.capacity_range = (
+            schema.bounds.size_ratio_range[1] - schema.bounds.size_ratio_range[0]
+        )
+        self.schema = schema
 
         self.norm_layer = nn.BatchNorm1d
         if norm_layer == "Layer":
             self.norm_layer = nn.LayerNorm
 
         self._models = {
-            Policy.KHybrid: KapModel,
-            Policy.QFixed: QModel,
-            Policy.Classic: ClassicModel,
-            Policy.YZHybrid: YZModel,
+            Policy.Classic: ClassicLCM,
+            Policy.QHybrid: QHybridLCM,
+            Policy.Fluid: FluidLCM,
+            Policy.Kapacity: KapLCM,
         }
 
     def get_choices(self):
         return self._models.keys()
 
-    def build_model(self, policy: Policy) -> torch.nn.Module:
-        feats_list = kINPUT_FEATS_DICT.get(policy, None)
-        if feats_list is None:
-            raise TypeError("Illegal policy")
-
-        num_feats = len(feats_list)
-        if "K" in feats_list:
-            # Add number of features to expand K to K0, K1, ..., K_maxlevels
-            num_feats += self.max_levels - 1
-
+    def build(self, **kwargs) -> torch.nn.Module:
+        feat_columns = self.schema.feat_cols()
+        num_feats = len(feat_columns)
         args = {
             "num_feats": num_feats,
             "capacity_range": self.capacity_range,
@@ -65,15 +57,16 @@ class LearnedCostModelBuilder:
             "decision_dim": self.decision_dim,
             "norm_layer": self.norm_layer,
         }
+        args.update(kwargs)
 
-        model_class = self._models.get(policy, None)
+        model_class = self._models.get(self.schema.policy, None)
         if model_class is None:
-            raise NotImplementedError("Model for policy not implemented")
+            raise NotImplementedError(f"Policy {self.schema.policy} not Implemented")
 
-        if model_class is ClassicModel:
+        if model_class is ClassicLCM:
             args["policy_embedding_size"] = self.policy_embedding_size
 
-        if model_class is KapModel:
+        if model_class is KapLCM:
             args["max_levels"] = self.max_levels
 
         model = model_class(**args)

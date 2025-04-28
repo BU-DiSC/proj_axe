@@ -2,14 +2,15 @@
 import logging
 import os
 import sys
-import toml
 from typing import Any
 
-from jobs.lcm_train import LCMTrainJob
-from jobs.data_gen import DataGenJob
-from jobs.ltune_train import LTuneTrainJob
-from jobs.mlos_bo import BayesianPipelineMlos
-from jobs.mlos_exp_runs import ExperimentMLOS
+import toml
+
+from jobs.create_lcm_data import CreateLCMData
+from jobs.create_ltuner_data import CreateLTunerData
+from jobs.run_experiments import RunExperiments
+from jobs.train_lcm import TrainLCM
+from jobs.train_ltuner import TrainLTuner
 
 
 class AxeDriver:
@@ -19,22 +20,21 @@ class AxeDriver:
         logging.basicConfig(
             format=config["log"]["format"], datefmt=config["log"]["datefmt"]
         )
-        self.log: logging.Logger = logging.getLogger(config["log"]["name"])
+        self.log: logging.Logger = logging.getLogger(config["app"]["name"])
         self.log.setLevel(getattr(logging, config["log"]["level"]))
         log_level = logging.getLevelName(self.log.getEffectiveLevel())
         self.log.debug(f"Log level: {log_level}")
 
     def run(self):
-        self.log.info(f'Staring app {self.config["app"]["name"]}')
-
         jobs = {
-            "DataGen": DataGenJob,
-            "LCMTrain": LCMTrainJob,
-            "LTuneTrain": LTuneTrainJob,
-            "BayesianPipelineMLOS": BayesianPipelineMlos,
-            "ExperimentMLOS": ExperimentMLOS,
+            "create_lcm_data": CreateLCMData,
+            "train_lcm": TrainLCM,
+            "create_ltuner_data": CreateLTunerData,
+            "train_ltuner": TrainLTuner,
+            "run_experiments": RunExperiments,
         }
         jobs_list = self.config["app"]["run"]
+        self.log.info(f"Jobs to run: {jobs_list}")
         for job_name in jobs_list:
             job = jobs.get(job_name, None)
             if job is None:

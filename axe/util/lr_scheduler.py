@@ -12,8 +12,7 @@ class LRSchedulerBuilder:
         optimizer: Opt.Optimizer,
     ) -> Opt.lr_scheduler.CosineAnnealingLR:
         return Opt.lr_scheduler.CosineAnnealingLR(
-            optimizer,
-            **self.scheduler_kwargs["CosineAnnealingLR"]
+            optimizer, **self.scheduler_kwargs["CosineAnnealingLR"]
         )
 
     def _build_exponential(
@@ -25,7 +24,7 @@ class LRSchedulerBuilder:
             **self.scheduler_kwargs["Exponential"],
         )
 
-    def build_scheduler(
+    def build(
         self, optimizer: Opt.Optimizer, scheduler_choice: str = "Constant"
     ) -> Optional[Opt.lr_scheduler._LRScheduler]:
         schedules = {

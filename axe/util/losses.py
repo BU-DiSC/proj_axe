@@ -8,7 +8,7 @@ class LossBuilder:
         self.loss_kwargs = loss_kwargs
 
     def build(self, choice: str) -> Optional[torch.nn.Module]:
-        losses : dict[str, Callable] = {
+        losses: dict[str, Callable] = {
             "MSLE": MSLELoss,
             "NMSE": NMSELoss,
             "RMSLE": RMSLELoss,
@@ -23,10 +23,11 @@ class LossBuilder:
         return loss()
 
     def _build_huber(self) -> torch.nn.Module:
-        return torch.nn.HuberLoss(**self.loss_kwargs['Huber'])
+        return torch.nn.HuberLoss(**self.loss_kwargs["Huber"])
 
     def _build_mse(self) -> torch.nn.Module:
-        return torch.nn.MSELoss(**self.loss_kwargs['MSE'])
+        return torch.nn.MSELoss(**self.loss_kwargs["MSE"])
+
 
 class MSLELoss(torch.nn.Module):
     def __init__(self):
