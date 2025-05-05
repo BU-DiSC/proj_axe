@@ -133,3 +133,7 @@ dmypy.json
 # Ignore saved models and checkpoints
 *.model
 *.pt
+
+
+data/
+.DS_Store
