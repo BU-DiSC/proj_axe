@@ -166,12 +166,13 @@ class TrainRobustLTuner:
         self._make_save_dir()
 
         loss_file = os.path.join(self.jcfg["save_dir"], "losses.csv")
+        loss_min = self.validate_loop()
         with open(loss_file, "w") as fid:
             loss_csv_write = csv.writer(fid)
             loss_csv_write.writerow(["epoch", "train_loss", "test_loss"])
+            loss_csv_write.writerow([0, loss_min, loss_min])
 
         max_epochs = self.jcfg["max_epochs"]
-        loss_min = self.validate_loop()
         for epoch in range(max_epochs):
             self.log.info(f"Epoch: [{epoch+1}/{max_epochs}]")
             train_loss = self.train_loop()

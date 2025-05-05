@@ -36,7 +36,7 @@ disable_tqdm = false
 [log]
 format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
 datefmt = '%d-%m-%y:%H:%M:%S'
-level = "DEBUG"
+level = "INFO"
 
 # =============================================================================
 # HEADER IO
@@ -44,7 +44,7 @@ level = "DEBUG"
 # =============================================================================
 [io]
 data_dir = "data"
-database = "snapshot.db"
+database = "axe_vldb_mlos_with_init.db"
 
 # =============================================================================
 # HEADER LSM
@@ -68,7 +68,7 @@ page_sizes = [4, 8, 16]                     # page size in KB
 entry_sizes = [1024, 2048, 4096, 8192]      # avg. size of each entry bits
 memory_budget_range = [5, 20]               # low, high, bits per element
 selectivity_range = [1e-7, 1e-9]            # low, high
-elements_range = [10000000, 500000000]    # element range
+elements_range = [100000000, 2000000000]    # element range
 
 # =============================================================================
 # HEADER JOB
@@ -92,7 +92,7 @@ overwrite_if_exists = false
 [job.train_lcm]
 # --------------------------------------
 max_epochs = 100
-save_dir = "data/lcm/models/kaplsm_250514_1230"
+save_dir = "data/lcm/models/kaplsm_250523_1406"
 no_checkpoint = false
 
 data_split = 0.9
@@ -112,7 +112,7 @@ loss_fn = "MSE"
 
 # Supported optimizers
 #   [SGD, Adam, Adagrad, AdamW]
-optimizer = "Adam"
+optimizer = "AdamW"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
@@ -125,15 +125,15 @@ output_dir = "data/ltuner/train_data/std"
 num_samples = 65536
 num_files = 32
 num_workers = 8
-overwrite_if_exists = true
+overwrite_if_exists = false
 
 # --------------------------------------
 [job.train_ltuner]
 # --------------------------------------
 max_epochs = 100
-save_dir = "data/ltuner/models/kaplsm_250514_1230"
+save_dir = "data/ltuner/models/kaplsm_250523_1406"
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "data/lcm/models/kaplsm_250514_1230"
+loss_fn_path = "data/lcm/models/kaplsm_250523_1406"
 optimizer = "AdamW"
 lr_scheduler = "CosineAnnealing"
 no_checkpoint = false
@@ -162,6 +162,7 @@ lcm_path = "data/lcm/models/kaplsm_250514_1230"
 lcm_model = "best_model.model"
 ltuner_path = "data/ltuner/models/kaplsm_250514_1230"
 ltuner_model = "best_model.model"
+if_table_exists = "replace" # ['replace', 'fail', 'append']
 
 # =============================================================================
 # HEADER LCM
@@ -192,11 +193,11 @@ penalty_factor = 10
 
 # kwargs specific to LTune models during forward pass
 [ltuner.train_kwargs]
-temp = 2
+temp = 10
 hard = false
 
 [ltuner.validate_kwargs]
-temp = 1
+temp = 0.001
 hard = true
 
 # -----------------------------------------------------------------------------

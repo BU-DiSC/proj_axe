@@ -5,7 +5,6 @@ from axe.lsm.types import Policy
 from axe.ltuner.data.schema import LTunerDataSchema
 from axe.ltuner.model import ClassicTuner, QLSMTuner, KapLSMTuner, YZLSMTuner
 from axe.ltuner.model.kap_robust_tuner import KapLSMRobustTuner
-from axe.ltuner.model.kap_robust_tuner_latent import KapLSMRobustTunerLatent
 from axe.ltuner.model.rc_latent import RCLatent
 from axe.ltuner.model.robust_classic_tuner import RobustClassicTuner
 from axe.ltuner.model.robust_classic_sampling import RobustClassicTunerSampler
