@@ -134,6 +134,4 @@ dmypy.json
 *.model
 *.pt
 
-
-data/
 .DS_Store
