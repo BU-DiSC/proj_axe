@@ -1,0 +1,23 @@
+[project]
+name = "proj_axe"
+version = "0.1"
+requires-python = ">=3.10"
+dependencies = [
+    "dill",
+    "joblib",
+    "mlos",
+    "mlos-core[smac]",
+    "numba",
+    "numpy",
+    "polars",
+    "pandas",
+    "pandas-stubs",
+    "pyarrow",
+    "pytest",
+    "reinmax",
+    "scipy",
+    "toml",
+    "torch",
+    "torchdata",
+    "tqdm",
+]
